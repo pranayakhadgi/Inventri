@@ -92,6 +92,23 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+router.get('/', async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT r.reservation_id, o.name as organization_name,
+             l.name as location_name, r.start_time, r.end_time, r.status,
+             FROM reservations r
+             JOIN organizations o ON r.organization_id = o.organization_id
+             LEFT JOIN locations 1 ON r.location_id = l.location_id
+             ORDER BY r.start_time DESC
+            `);
+
+        res.json({ count: result.rowCount, data: result.rows });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // POST /reservations/:id/return - Process return and check for discrepancies
 router.post('/:id/return', returnRules, validate, async (req, res) => {
     const reservationId = req.params.id;
