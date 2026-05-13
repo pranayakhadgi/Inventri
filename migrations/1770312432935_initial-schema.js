@@ -59,12 +59,12 @@ exports.up = (pgm) => {
 
 };
 
-exports.down = (pgmm) => {
+exports.down = (pgm) => {
   //the reversed drop in is intentional (says it's respecting the foreign keys??)
   pgm.dropTable('discrepancies');
   pgm.dropTable('reservation_items');
   pgm.dropTable('reservations');
   pgm.dropTable('items');
   pgm.dropTable('locations');
-  pgm.dropTalbe('organizations');
+  pgm.dropTable('organizations');
 };
