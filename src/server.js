@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const express = require('express');
+const path = require('path');
 const db = require('./config/database');
 const swagger = require('./config/swagger');
 
@@ -10,7 +11,10 @@ const app = express();
 app.use(express.json()); // Restored missing JSON middleware
 
 // goal to load the index at root before the api call. 
-app.use(express.static('public'));
+
+//transition to the serverless-ready routing
+//app.use(express.static('public')); <-- old
+app.use(express.static(path.join(__dirname, '../public')));
 
 const organizationsRouter = require('./routes/organizations');
 app.use('/organizations', organizationsRouter);
@@ -23,10 +27,6 @@ const discrepanciesRouter = require('./routes/discrepancies');
 app.use('/discrepancies', discrepanciesRouter)
 const reportsRouter = require('./routes/reports');
 app.use('/reports', reportsRouter)
-//route placeholder
-app.get('/', (req, res) => {
-    res.json({ message: 'Equipment Inventory API' });
-});
 
 app.get('/health', async (req, res) => {
     try {
@@ -60,7 +60,17 @@ app.get('/swagger-spec', (req, res) => {
     res.json(require('./config/swagger-docs'));
 });
 app.use('/api-docs', swagger.serve, swagger.setup);
-//Start server
-app.listen(PORT, () => {
-    console.log(`Server initiated on port #${PORT}`);
-});
+
+/**
+ * new export conditional function for vercel
+ * contradicts the earlier mere declaration of app.listen() function
+ * 
+ */
+if (process.env.NODE_ENV !== 'production') {
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+        console.log(`local server running on this thang http://localhost:${PORT}`);
+    });
+}
+
+module.exports = app;
