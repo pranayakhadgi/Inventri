@@ -3,4 +3,5 @@
 test_query.sql
 *.save
 .env
+*.env
 node_modules/
