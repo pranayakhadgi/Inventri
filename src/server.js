@@ -14,8 +14,11 @@ app.use(express.json()); // Restored missing JSON middleware
 
 //transition to the serverless-ready routing
 //app.use(express.static('public')); <-- old
-app.use(express.static(path.join(__dirname, '../public')));
+const staticPath = process.env.VERCEL ? path.join(__dirname, '../public') : path.join(__dirname, '../public');
+app.use(express.static(staticPath));
 
+
+// ROUTES
 const organizationsRouter = require('./routes/organizations');
 app.use('/organizations', organizationsRouter);
 const itemsRouter = require('./routes/items');
@@ -61,6 +64,11 @@ app.get('/swagger-spec', (req, res) => {
 });
 app.use('/api-docs', swagger.serve, swagger.setup);
 
+
+// serves index.html for any non-API routes (SPA support)
+app.get('/', (req, res) => {
+    res.sendFile(path.join(staticPath, 'index.html'));
+});
 /**
  * new export conditional function for vesrcel
  * contradicts the earlier mere declaration of app.listen() function
