@@ -62,12 +62,11 @@ app.get('/swagger-spec', (req, res) => {
 app.use('/api-docs', swagger.serve, swagger.setup);
 
 /**
- * new export conditional function for vercel
+ * new export conditional function for vesrcel
  * contradicts the earlier mere declaration of app.listen() function
  * 
  */
 if (process.env.NODE_ENV !== 'production') {
-    const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
         console.log(`local server running on this thang http://localhost:${PORT}`);
     });

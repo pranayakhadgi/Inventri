@@ -96,10 +96,10 @@ router.get('/', async (req, res) => {
     try {
         const result = await db.query(`
             SELECT r.reservation_id, o.name as organization_name,
-             l.name as location_name, r.start_time, r.end_time, r.status,
+             l.name as location_name, r.start_time, r.end_time, r.status
              FROM reservations r
              JOIN organizations o ON r.organization_id = o.organization_id
-             LEFT JOIN locations 1 ON r.location_id = l.location_id
+             LEFT JOIN locations l ON r.location_id = l.location_id
              ORDER BY r.start_time DESC
             `);
 
