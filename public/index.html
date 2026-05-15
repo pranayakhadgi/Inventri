@@ -5,56 +5,189 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Equipment Inventory Dashboard</title>
-    <!-- Yes, you are right! We link the CSS here in the head -->
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
     <div class="container">
-        <h1>Equipment Inventory Dashboard</h1>
-        <p class="subtitle">Ghost Return Detection & Discrepancy Tracking</p>
+        <div class="header">
+            <h1>Equipment Inventory System</h1>
+            <p class="subtitle">Ghost Return Detection & Discrepancy Tracking</p>
+        </div>
 
-        <div id="error"></div>
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+            <button class="tab-btn" data-tab="inventory">Inventory</button>
+            <button class="tab-btn" data-tab="reservations">Reservations</button>
+            <button class="tab-btn" data-tab="returns">Process Return</button>
+            <button class="tab-btn" data-tab="discrepancies">Discrepancies</button>
+        </div>
 
-        <div class="stats" id="stats">
-            <div class="stat-card">
-                <div class="stat-label">Total Discrepancies</div>
-                <div class="stat-value total" id="total-count">-</div>
+        <!-- Toast Notification -->
+        <div id="toast" class="toast"></div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <div class="stats" id="stats">
+                <div class="stat-card">
+                    <div class="stat-label">Total Items</div>
+                    <div class="stat-value" id="total-items">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Active Reservations</div>
+                    <div class="stat-value" id="active-reservations">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Open Discrepancies</div>
+                    <div class="stat-value flagged" id="open-discrepancies">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Resolved</div>
+                    <div class="stat-value resolved" id="resolved-count">-</div>
+                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Flagged</div>
-                <div class="stat-value flagged" id="flagged-count">-</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Resolved</div>
-                <div class="stat-value resolved" id="resolved-count">-</div>
+
+            <div class="activity-section">
+                <h3>Recent Activity</h3>
+                <div id="activity-feed" class="activity-feed">
+                    <p class="loading">Loading...</p>
+                </div>
             </div>
         </div>
 
-        <div id="loading" class="loading">Loading discrepancies...</div>
+        <!-- Inventory Tab -->
+        <div id="inventory" class="tab-content">
+            <h2>Equipment Inventory</h2>
+            <div id="loading-inventory" class="loading">Loading inventory...</div>
+            <table id="inventory-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Category</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="inventory-body"></tbody>
+            </table>
+        </div>
 
-        <table id="discrepancies-table" style="display: none;">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Organization</th>
-                    <th>Item</th>
-                    <th>Type</th>
-                    <th>Status</th>
-                    <th>Reported</th>
-                    <th>Notes</th>
-                </tr>
-            </thead>
-            <tbody id="discrepancies-body">
-            </tbody>
-        </table>
+        <!-- Reservations Tab -->
+        <div id="reservations" class="tab-content">
+            <h2>Reservations</h2>
+            <button class="btn btn-primary" id="new-res-btn">+ New Reservation</button>
 
-        <div class="api-link">
-            <a href="/api-docs" target="_blank">View API Documentation →</a>
+            <!-- New Reservation Form -->
+            <div id="new-res-form" class="form-panel" style="display: none;">
+                <h3>Create Reservation</h3>
+                <form id="reservation-form">
+                    <div class="form-group">
+                        <label>Organization</label>
+                        <select id="org-select" required>
+                            <option value="">Select Organization</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Start Date & Time</label>
+                        <input type="datetime-local" id="start-time" required>
+                    </div>
+                    <div class="form-group">
+                        <label>End Date & Time</label>
+                        <input type="datetime-local" id="end-time" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Items to Reserve</label>
+                        <div id="items-checkboxes"></div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Create Reservation</button>
+                        <button type="button" class="btn btn-secondary" id="cancel-res-btn">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Reservations List -->
+            <div id="loading-reservations" class="loading">Loading reservations...</div>
+            <table id="reservations-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Organization</th>
+                        <th>Location</th>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="reservations-body"></tbody>
+            </table>
+        </div>
+
+        <!-- Returns Tab -->
+        <div id="returns" class="tab-content">
+            <h2>Process Return</h2>
+            <div class="form-group">
+                <label>Select Reservation to Return</label>
+                <select id="return-res-select">
+                    <option value="">Choose a reservation...</option>
+                </select>
+            </div>
+
+            <!-- Return Form -->
+            <div id="return-form-container" style="display: none;">
+                <div class="form-panel">
+                    <h3>Return Items</h3>
+                    <div id="return-items-list"></div>
+                    <div class="form-actions">
+                        <button class="btn btn-primary" id="submit-return-btn">Process Return</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Discrepancies Tab -->
+        <div id="discrepancies" class="tab-content">
+            <h2>Discrepancies</h2>
+            <div class="stats" style="margin-bottom: 1.5rem;">
+                <div class="stat-card">
+                    <div class="stat-label">Total</div>
+                    <div class="stat-value" id="disc-total">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Flagged</div>
+                    <div class="stat-value flagged" id="disc-flagged">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Resolved</div>
+                    <div class="stat-value resolved" id="disc-resolved">-</div>
+                </div>
+            </div>
+
+            <div id="loading-discrepancies" class="loading">Loading discrepancies...</div>
+            <table id="discrepancies-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Organization</th>
+                        <th>Item</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Reported</th>
+                        <th>Notes</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="discrepancies-body"></tbody>
+            </table>
+
+            <div style="margin-top: 2rem;">
+                <a href="#" id="download-csv" class="btn btn-secondary">📥 Download CSV Report</a>
+            </div>
         </div>
     </div>
 
-    <!-- And we link the JavaScript here at the end of the body -->
     <script src="script.js"></script>
 </body>
 
