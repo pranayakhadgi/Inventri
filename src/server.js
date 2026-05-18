@@ -30,6 +30,8 @@ const discrepanciesRouter = require('./routes/discrepancies');
 app.use('/discrepancies', discrepanciesRouter)
 const reportsRouter = require('./routes/reports');
 app.use('/reports', reportsRouter)
+const locationsRouter = require('./routes/locations');
+app.use('/locations', locationsRouter)
 
 app.get('/health', async (req, res) => {
     try {

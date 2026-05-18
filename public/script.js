@@ -95,9 +95,10 @@ async function loadInventory() {
 // ===== RESERVATIONS =====
 async function loadReservations() {
     try {
-        const [orgsRes, itemsRes, reservationsRes] = await Promise.all([
+        const [orgsRes, itemsRes, locationsRes, reservationsRes] = await Promise.all([
             fetch(`${API_BASE}/organizations`).then(r => r.json()),
             fetch(`${API_BASE}/items`).then(r => r.json()),
+            fetch(`${API_BASE}/locations`).then(r => r.json()),
             fetch(`${API_BASE}/reservations`).then(r => r.json())
         ]);
 
@@ -109,12 +110,31 @@ async function loadReservations() {
 
         // Populate items checkboxes
         const itemsCheckboxes = document.getElementById('items-checkboxes');
-        itemsCheckboxes.innerHTML = itemsRes.data.map(item => `
-            <div class="checkbox-item">
-                <input type="checkbox" id="item-${item.item_id}" value="${item.item_id}" name="item">
-                <label for="item-${item.item_id}">${item.name}</label>
+        itemsCheckboxes.innerHTML = itemsRes.data.map(item => {
+            const available = item.status === 'available';
+            return `
+            <div class="checkbox-item ${available ? '' : 'unavailable'}">
+                <input type="checkbox" 
+                    id="item-${item.item_id}" 
+                    value="${item.item_id}" 
+                    name="item" 
+                    ${available ? '' : 'disabled'} />
+                <label for="item-${item.item_id}">
+                    ${item.name}
+                    <span class="item-status-tag ${item.status}">
+                        ${item.status}
+                    </span>
+                </label>
             </div>
-        `).join('');
+        `}).join('');
+
+        // Populate locations select
+        const locationSelect = document.getElementById('location-select');
+        locationSelect.innerHTML = '<option value="">Select Location</option>'
+            + locationsRes.data.map(loc => `
+            <option value="${loc.location_id}">${loc.name} (${loc.type})
+            </option>
+            `).join('');
 
         // Populate reservations table
         const tbody = document.getElementById('reservations-body');
@@ -152,6 +172,7 @@ document.getElementById('reservation-form').addEventListener('submit', async (e)
     e.preventDefault();
 
     const orgId = document.getElementById('org-select').value;
+    const locationId = document.getElementById('location-select').value;
     const startTime = document.getElementById('start-time').value;
     const endTime = document.getElementById('end-time').value;
     const selectedItems = Array.from(document.querySelectorAll('input[name="item"]:checked')).map(cb => ({
@@ -170,6 +191,7 @@ document.getElementById('reservation-form').addEventListener('submit', async (e)
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 organization_id: parseInt(orgId),
+                location_id: parseInt(locationId),
                 start_time: new Date(startTime).toISOString(),
                 end_time: new Date(endTime).toISOString(),
                 items: selectedItems

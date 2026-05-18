@@ -262,6 +262,37 @@ tr:last-child td {
     border-radius: 0.375rem;
 }
 
+.checkbox-item.unavailable {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.item-status-tag {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    /*idk what's happening here*/
+    margin-left: 0.5rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.item-status-tag.available {
+    background: #1f4620;
+    color: #4ade80;
+}
+
+.item-status-tag.checked_out {
+    background: #451a03;
+    color: #fbbf24;
+}
+
+.item-status-tag.maintenance {
+    background: #3d3d3d;
+    /*alright claude, i trust you*/
+    color: #fbbf24;
+}
+
 .checkbox-item input[type="checkbox"] {
     width: auto;
     margin-right: 0.75rem;
