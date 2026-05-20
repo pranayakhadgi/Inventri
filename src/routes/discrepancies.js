@@ -22,6 +22,18 @@ router.put('/:id/resolve', async (req, res) => {
             WHERE discrepancy_id = $1 RETURNING *`, [discrepancyId]
         );
 
+        //update the item status to 'available'
+        await db.query(
+            `UPDATE items SET status = 'available'
+             WHERE item_id = (
+                 SELECT ri.item_id 
+                 FROM reservation_items ri
+                 JOIN discrepancies d ON ri.reservation_item_id = d.reservation_item_id
+                 WHERE d.discrepancy_id = $1
+             )`,
+            [discrepancyId]
+        );
+
         res.json({
             message: 'Discrepancy resolved',
             discrepancy: result.rows[0]

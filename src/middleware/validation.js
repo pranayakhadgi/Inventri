@@ -9,16 +9,46 @@ const reservationRules = [
         .isInt({ min: 1 }),
     body('start_time')
         .isISO8601()
-        .withMessage('start_time must be a valid ISO 8601 date'),
+        .withMessage('start_time must be a valid ISO 8601 date')
+        .custom((value) => {
+            const start = new Date(value);
+            if (start < new Date(Date.now() - 60000)) {
+                throw new Error('Start time cannot be in the past');
+            }
+
+            const maxDate = new Date();
+            maxDate.setFullYear(maxDate.getFullYear() + 2);
+            maxDate.setHours(23, 59, 59, 999); // Avoid timezone/millisecond/hour overbounding
+
+            if (start > maxDate) {
+                throw new Error('Start time cannot be more than 2 years in the future');
+            }
+            return true;
+        }),
     body('end_time')
         .isISO8601()
-        .withMessage('end_time must be valid ISO 8601 date'),
+        .withMessage('end_time must be valid ISO 8601 date')
+        .custom((value, { req }) => {
+            const end = new Date(value);
+            if (end <= new Date(req.body.start_time)) {
+                throw new Error('End time must be after start time');
+            }
+
+            const maxDate = new Date();
+            maxDate.setFullYear(maxDate.getFullYear() + 2);
+            maxDate.setHours(23, 59, 59, 999);
+
+            if (end > maxDate) {
+                throw new Error('End time cannot be more than 2 years in the future');
+            }
+            return true;
+        }),
     body('items')
         .isArray({ min: 1 })
         .withMessage('items must be a non-empty array'),
     body('items.*.item_id')
         .isInt({ min: 1 })
-        .withMessage('quantity must be at least 1')
+        .withMessage('quantity must be at least 1'),
 ];
 
 const returnRules = [

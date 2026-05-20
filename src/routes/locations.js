@@ -17,5 +17,28 @@ router.get('/', async (req, res) => {
     }
 });
 
+router.post('/', async (req, res) => {
+    const { name, type, address } = req.body;
+
+    if (!name || !type) {
+        return res.status(400).json({
+            error: 'location name and type are required'
+        });
+    }
+
+    try {
+        const result = await db.query(
+            `INSERT INTO locations
+            (name, type, address)
+            VALUES ($1, $2, $3)
+            RETURNING *`,
+            [name, type, address || null]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // export router
 module.exports = router;

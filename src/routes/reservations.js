@@ -28,6 +28,11 @@ router.post('/', reservationRules, validate, async (req, res) => {
                     VALUES ($1, $2, $3, 0)`,
                     [reservationId, item.item_id, item.quantity_requested || 1]
                 );
+                await db.query(
+                    `UPDATE items SET status = 'checked_out'
+                    WHERE item_id = $1`,
+                    [item.item_id]
+                );
             }
         }
 
@@ -145,6 +150,16 @@ router.post('/:id/return', returnRules, validate, async (req, res) => {
                     [item.reservation_item_id, `Expected ${quantity_requested}, returned ${quantity_returned}`]
                 );
                 discrepancies.push(discResult.rows[0]);
+            }
+
+            if (quantity_returned >= quantity_requested) {
+                await db.query(
+                    `UPDATE items SET status = 'available'
+                    WHERE item_id = (
+                        SELECT item_id FROM reservation_items WHERE reservation_item_id = $1
+                    )`,
+                    [item.reservation_item_id]
+                );
             }
         }
 

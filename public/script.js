@@ -92,6 +92,58 @@ async function loadInventory() {
     }
 }
 
+// ===== ADD ITEM =====
+document.getElementById('new-item-btn').addEventListener('click', () => {
+    // Populate location dropdown from already-fetched data
+    fetch('/locations').then(r => r.json()).then(data => {
+        const select = document.getElementById('item-location');
+        select.innerHTML = '<option value="">Select Location</option>'
+            + data.data.map(l => `
+                <option value="${l.location_id}">${l.name}</option>
+            `).join('');
+    });
+    document.getElementById('new-item-form').style.display = 'block';
+});
+
+document.getElementById('cancel-item-btn').addEventListener('click', () => {
+    document.getElementById('new-item-form').style.display = 'none';
+});
+
+document.getElementById('submit-item-btn').addEventListener('click', async () => {
+    const name = document.getElementById('item-name').value.trim();
+    const category = document.getElementById('item-category').value;
+    const locationId = document.getElementById('item-location').value;
+
+    if (!name) {
+        showToast('Item name is required', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/items', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                category: category || null,
+                location_id: locationId ? parseInt(locationId) : null
+            })
+        });
+
+        if (response.ok) {
+            showToast('Item added!', 'success');
+            document.getElementById('new-item-form').style.display = 'none';
+            document.getElementById('item-name').value = '';
+            loadInventory();
+        } else {
+            const err = await response.json();
+            showToast(err.error || 'Failed to add item', 'error');
+        }
+    } catch (err) {
+        showToast('Error adding item', 'error');
+    }
+});
+
 // ===== RESERVATIONS =====
 async function loadReservations() {
     try {
@@ -185,6 +237,34 @@ document.getElementById('reservation-form').addEventListener('submit', async (e)
         return;
     }
 
+    const now = new Date();
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    if (start < now) {
+        showToast('Start date cannot be in the past', 'error');
+        return;
+    }
+
+    if (end <= start) {
+        showToast('End date must be after start date', 'error');
+        return;
+    }
+
+    const maxDate = new Date();
+    maxDate.setFullYear(maxDate.getFullYear() + 2);
+    maxDate.setHours(23, 59, 59, 999); // Avoid timezone/hour/second overbounding
+
+    if (start > maxDate) {
+        showToast('Start date cannot be more than 2 years in the future', 'error');
+        return;
+    }
+
+    if (end > maxDate) {
+        showToast('End date cannot be more than 2 years in the future', 'error');
+        return;
+    }
+
     try {
         const response = await fetch(`${API_BASE}/reservations`, {
             method: 'POST',
@@ -204,7 +284,11 @@ document.getElementById('reservation-form').addEventListener('submit', async (e)
             document.getElementById('reservation-form').reset();
             loadReservations();
         } else {
-            showToast('Failed to create reservation', 'error');
+            const errData = await response.json();
+            const errMsg = errData.details
+                ? errData.details.map(d => d.message).join(', ')
+                : (errData.error || 'Failed to create reservation');
+            showToast(errMsg, 'error');
         }
     } catch (err) {
         console.error('Submission error:', err);

@@ -56,5 +56,28 @@ router.get('/', async (req, res) => {
     }
 });
 
+router.post('/', async (req, res) => {
+    const { name, type, contact_email } = req.body;
+
+    if (!name || !type) {
+        return res.status(400).json({
+            error: 'Organization name and type are required'
+        });
+    }
+
+    try {
+        const result = await db.query(
+            `INSERT INTO organizations
+            (name, type, contact_email, status)
+            VALUES ($1, $2, $3, 'active')
+            RETURNING *`,
+            [name, type, contact_email || null]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
 
