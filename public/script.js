@@ -37,22 +37,26 @@ async function loadDashboard() {
             fetch(`${API_BASE}/discrepancies`).then(r => r.json())
         ]);
 
-        document.getElementById('total-items').textContent = items.count || 0;
-        document.getElementById('active-reservations').textContent = reservations.data.filter(r => r.status === 'active').length;
-        document.getElementById('open-discrepancies').textContent = discrepancies.flagged || 0;
-        document.getElementById('resolved-count').textContent = discrepancies.resolved || 0;
+        // Removed stat card DOM updates since they are replaced by the placeholder
+        renderCalendar(reservations.data);
 
         // Activity feed
         const recentItems = [
-            ...discrepancies.data.slice(0, 2).map(d => ({
+            ...discrepancies.data.slice(0, 3).map(d => ({
+                rawTime: new Date(d.reported_at).getTime(),
                 time: new Date(d.reported_at).toLocaleDateString(),
-                text: `Discrepancy flagged: ${d.type} on item ${d.item_name}`
+                text: d.status === 'resolved' 
+                    ? `✅ The discrepancy for the ${d.item_name} was resolved.` 
+                    : `⚠️ A discrepancy was flagged for the ${d.item_name}.`
             })),
-            ...reservations.data.slice(0, 2).map(r => ({
+            ...reservations.data.slice(0, 3).map(r => ({
+                rawTime: new Date(r.start_time).getTime(),
                 time: new Date(r.start_time).toLocaleDateString(),
-                text: `Reservation created: ${r.organization_name}`
+                text: r.status === 'completed' 
+                    ? `📦 ${r.organization_name} returned their items.`
+                    : `📅 ${r.organization_name} created a new reservation.`
             }))
-        ].sort((a, b) => new Date(b.time) - new Date(a.time));
+        ].sort((a, b) => b.rawTime - a.rawTime).slice(0, 5);
 
         const feed = document.getElementById('activity-feed');
         feed.innerHTML = recentItems.length > 0
@@ -74,18 +78,50 @@ async function loadInventory() {
         const response = await fetch(`${API_BASE}/items`);
         const data = await response.json();
 
-        const tbody = document.getElementById('inventory-body');
-        tbody.innerHTML = data.data.map(item => `
-            <tr>
-                <td>${item.name}</td>
-                <td>${item.category || '-'}</td>
-                <td>${item.location_name || '-'}</td>
-                <td><span class="status ${item.status}">${item.status}</span></td>
-            </tr>
-        `).join('');
+        const container = document.getElementById('inventory-body');
+        
+        // Group items by category
+        const categorized = {};
+        data.data.forEach(item => {
+            const cat = item.category || 'Uncategorized';
+            if (!categorized[cat]) categorized[cat] = [];
+            categorized[cat].push(item);
+        });
+
+        let html = '';
+        for (const [category, items] of Object.entries(categorized)) {
+            html += `<h3 class="category-title">${category}</h3>`;
+            html += `<div class="inventory-grid">`;
+            
+            items.forEach(item => {
+                let badgeClass = item.status === 'available' ? 'status-green' : (item.status === 'checked_out' ? 'status-amber' : 'status-red');
+                let imgHtml = item.image_url 
+                    ? `<div class="card-image-wrapper"><img src="${item.image_url}" alt="${item.name}" class="inventory-card-image"></div>`
+                    : `<div class="card-image-wrapper placeholder"><span style="font-size:2rem">📦</span></div>`;
+                    
+                html += `
+                    <div class="inventory-card">
+                        ${imgHtml}
+                        <div class="card-header">
+                            <h4 class="item-name">${item.name}</h4>
+                            <span class="status-badge ${badgeClass}">${item.status.replace('_', ' ')}</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="info-row">
+                                <span class="info-label">Location:</span>
+                                <span class="info-value">${item.location_name || 'Unassigned'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+        }
+
+        container.innerHTML = html;
 
         document.getElementById('loading-inventory').style.display = 'none';
-        document.getElementById('inventory-table').style.display = 'table';
+        document.getElementById('inventory-table').style.display = 'block';
     } catch (err) {
         console.error('Inventory error:', err);
         showToast('Failed to load inventory', 'error');
@@ -133,7 +169,7 @@ document.getElementById('submit-item-btn').addEventListener('click', async () =>
         if (response.ok) {
             showToast('Item added!', 'success');
             document.getElementById('new-item-form').style.display = 'none';
-            document.getElementById('item-name').value = '';
+            document.getElementById('add-item-form').reset();
             loadInventory();
         } else {
             const err = await response.json();
@@ -141,6 +177,103 @@ document.getElementById('submit-item-btn').addEventListener('click', async () =>
         }
     } catch (err) {
         showToast('Error adding item', 'error');
+    }
+});
+
+// ===== ORGANIZATIONS =====
+
+document.getElementById('new-org-btn').addEventListener('click', () => {
+    document.getElementById('new-org-form').style.display = 'block';
+});
+
+document.getElementById('cancel-org-btn').addEventListener('click', () => {
+    document.getElementById('new-org-form').style.display = 'none';
+});
+
+document.getElementById('submit-org-btn').addEventListener('click', async () => {
+    const name = document.getElementById('org-name').value.trim();
+    const type = document.getElementById('org-type').value;
+    const email = document.getElementById('org-email').value.trim();
+    const icon = document.getElementById('org-icon').value;
+
+    if (!name || !type) {
+        showToast('Organization name and type are required', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/organizations`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                type: type || null,
+                contact_email: email || null,
+                icon: icon || '🏢'
+            })
+        });
+
+        if (response.ok) {
+            showToast('Organization added!', 'success');
+            document.getElementById('new-org-form').style.display = 'none';
+            document.getElementById('org-name').value = '';
+            document.getElementById('org-type').value = '';
+            document.getElementById('org-email').value = '';
+            document.getElementById('org-icon').value = '🏢';
+            loadReservations();
+        } else {
+            const err = await response.json();
+            showToast(err.error || 'Failed to add organization', 'error');
+        }
+    } catch (err) {
+        showToast('Error adding organization', 'error');
+    }
+});
+
+// ===== LOCATIONS =====
+
+document.getElementById('new-loc-btn').addEventListener('click', () => {
+    document.getElementById('new-loc-form').style.display = 'block';
+});
+
+document.getElementById('cancel-loc-btn').addEventListener('click', () => {
+    document.getElementById('new-loc-form').style.display = 'none';
+});
+
+document.getElementById('submit-loc-btn').addEventListener('click', async () => {
+    const name = document.getElementById('loc-name').value.trim();
+    const type = document.getElementById('loc-type').value;
+    const address = document.getElementById('loc-address').value.trim();
+
+    if (!name || !type) {
+        showToast('Location name and type are required', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/locations`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                type: type || null,
+                address: address || null
+            })
+        });
+
+        if (response.ok) {
+            showToast('Location added!', 'success');
+            document.getElementById('new-loc-form').style.display = 'none';
+            document.getElementById('loc-name').value = '';
+            document.getElementById('loc-type').value = '';
+            document.getElementById('loc-address').value = '';
+            loadReservations();
+        } else {
+            const err = await response.json();
+            showToast(err.error || 'Failed to add location', 'error');
+        }
+    } catch (err) {
+        showToast('Error adding location', 'error');
     }
 });
 
@@ -283,6 +416,7 @@ document.getElementById('reservation-form').addEventListener('submit', async (e)
             document.getElementById('new-res-form').style.display = 'none';
             document.getElementById('reservation-form').reset();
             loadReservations();
+            loadInventory(); // Auto-refresh inventory tab so it matches reservations
         } else {
             const errData = await response.json();
             const errMsg = errData.details
@@ -378,6 +512,8 @@ async function submitReturn(reservationId, items) {
             document.getElementById('return-res-select').value = '';
             document.getElementById('return-form-container').style.display = 'none';
             loadDiscrepancies();
+            loadInventory(); // Keep inventory statuses in sync after returns
+            loadReservations(); // Keep reservations updated after returns
         }
     } catch (err) {
         showToast('Error processing return', 'error');
@@ -405,7 +541,7 @@ async function loadDiscrepancies() {
                 <td>${new Date(disc.reported_at).toLocaleDateString()}</td>
                 <td>${disc.notes || '-'}</td>
                 <td>
-                    ${disc.status === 'flagged' ? `<button class="btn btn-success btn-small" onclick="resolveDiscrepancy(${disc.discrepancy_id})">Resolve</button>` : '—'}
+                    ${disc.status === 'flagged' ? `<button class="btn btn-success btn-small" onclick="openResolvePanel(${disc.discrepancy_id}, '${disc.item_name}')">Resolve</button>` : '—'}
                 </td>
             </tr>
         `).join('');
@@ -418,17 +554,88 @@ async function loadDiscrepancies() {
     }
 }
 
-async function resolveDiscrepancy(discrepancyId) {
+function openResolvePanel(discrepancyId, itemName) {
+    document.getElementById('resolve-disc-id').value = discrepancyId;
+    document.getElementById('resolution-title').textContent = `Resolve Discrepancy for: ${itemName}`;
+
+    // Reset form inputs
+    document.getElementById('resolution-type').value = '';
+    document.getElementById('resolution-notes').value = '';
+
+    const preview = document.getElementById('resolution-consequence');
+    preview.style.display = 'none';
+
+    // Show the panel and scroll smoothly to it
+    const panel = document.getElementById('resolution-panel');
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Live Consequence Warning Preview
+document.getElementById('resolution-type').addEventListener('change', (e) => {
+    const value = e.target.value;
+    const preview = document.getElementById('resolution-consequence');
+
+    if (!value) {
+        preview.style.display = 'none';
+        return;
+    }
+
+    preview.style.display = 'block';
+
+    if (value === 'returned' || value === 'false-alarm') {
+        preview.style.background = '#064e3b';
+        preview.style.color = '#34d399';
+        preview.style.border = '1px solid #10b981';
+        preview.textContent = '✅ Available Action: Item status will be reset to "available" immediately.';
+    } else if (value === 'lost' || value === 'damaged') {
+        preview.style.background = '#450a0a';
+        preview.style.color = '#fca5a5';
+        preview.style.border = '1px solid #ef4444';
+        preview.textContent = '⚠️ Maintenance Action: Item status will be set to "maintenance". It will remain locked from future reservations.';
+    }
+});
+
+// Cancel Button hides the form
+document.getElementById('cancel-resolve-btn').addEventListener('click', () => {
+    document.getElementById('resolution-panel').style.display = 'none';
+});
+
+// Submit Button Action
+document.getElementById('submit-resolve-btn').addEventListener('click', async () => {
+    const discrepancyId = document.getElementById('resolve-disc-id').value;
+    const resolutionType = document.getElementById('resolution-type').value;
+    const resolutionNotes = document.getElementById('resolution-notes').value.trim();
+
+    if (!resolutionType || !resolutionNotes) {
+        showToast('Please fill out all resolution fields.', 'error');
+        return;
+    }
+
     try {
-        const response = await fetch(`${API_BASE}/discrepancies/${discrepancyId}/resolve`, { method: 'PUT' });
+        const response = await fetch(`${API_BASE}/discrepancies/${discrepancyId}/resolve`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                resolutionType,
+                resolutionNotes
+            })
+        });
+
         if (response.ok) {
-            showToast('Discrepancy resolved!', 'success');
+            showToast('Discrepancy successfully resolved!', 'success');
+            document.getElementById('resolution-panel').style.display = 'none';
             loadDiscrepancies();
+            loadInventory(); // Sync the item status in inventory tab immediately
+            loadReservations(); // Sync the reservations tab immediately
+        } else {
+            const err = await response.json();
+            showToast(err.error || 'Failed to resolve discrepancy', 'error');
         }
     } catch (err) {
-        showToast('Error resolving discrepancy', 'error');
+        showToast('Error connecting to server', 'error');
     }
-}
+});
 
 // CSV Download
 document.getElementById('download-csv').addEventListener('click', (e) => {
@@ -438,3 +645,298 @@ document.getElementById('download-csv').addEventListener('click', (e) => {
 
 // Initial load
 loadDashboard();
+
+// ==== CALENDAR LOGIC ====
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const CAL_MIN_YEAR = 2025;
+const CAL_MAX_YEAR = 2027;
+
+let calendarMonth = new Date().getMonth();
+let calendarYear = new Date().getFullYear();
+let cachedReservations = [];
+
+function updateCalendarLabel() {
+    const label = document.getElementById('cal-month-label');
+    if (label) label.textContent = `${MONTH_NAMES[calendarMonth]} ${calendarYear}`;
+}
+
+function canGoPrev() {
+    return !(calendarYear === CAL_MIN_YEAR && calendarMonth === 0);
+}
+
+function canGoNext() {
+    return !(calendarYear === CAL_MAX_YEAR && calendarMonth === 11);
+}
+
+document.getElementById('cal-prev').addEventListener('click', () => {
+    if (!canGoPrev()) return;
+    calendarMonth--;
+    if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
+    renderCalendar(cachedReservations);
+});
+
+document.getElementById('cal-next').addEventListener('click', () => {
+    if (!canGoNext()) return;
+    calendarMonth++;
+    if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+    renderCalendar(cachedReservations);
+});
+
+function renderCalendar(reservations) {
+    cachedReservations = reservations;
+    const grid = document.getElementById('calendar-grid');
+    const tooltip = document.getElementById('calendar-tooltip');
+    if (!grid) return;
+
+    grid.innerHTML = '';
+    updateCalendarLabel();
+
+    // Disable nav buttons at boundaries
+    const prevBtn = document.getElementById('cal-prev');
+    const nextBtn = document.getElementById('cal-next');
+    if (prevBtn) prevBtn.disabled = !canGoPrev();
+    if (nextBtn) nextBtn.disabled = !canGoNext();
+
+    const year = calendarYear;
+    const month = calendarMonth;
+    const today = new Date();
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayOfWeek = new Date(year, month, 1).getDay(); // 0=Sun
+
+    // Add empty offset cells for alignment
+    for (let i = 0; i < firstDayOfWeek; i++) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'calendar-day empty';
+        grid.appendChild(emptyDiv);
+    }
+
+    // Collect unique orgs for legend
+    const legendOrgs = new Map();
+
+    // Optimize: Pre-parse reservation dates outside the loop
+    const parsedReservations = reservations.map(res => ({
+        ...res,
+        parsedStart: new Date(res.start_time).setHours(0, 0, 0, 0),
+        parsedEnd: res.end_time ? new Date(res.end_time).setHours(23, 59, 59, 999) : Infinity
+    }));
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const currentDate = new Date(year, month, day);
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'calendar-day';
+
+        // Check if today
+        if (currentDate.toDateString() === today.toDateString()) {
+            dayDiv.classList.add('today');
+        }
+
+        // Day number
+        const dayNumber = document.createElement('span');
+        dayNumber.className = 'day-number';
+        dayNumber.textContent = day;
+        dayDiv.appendChild(dayNumber);
+
+        // Find reservations for this day
+        const dayStart = currentDate.setHours(0, 0, 0, 0);
+        const dayReservations = parsedReservations.filter(res => {
+            return dayStart >= res.parsedStart && dayStart <= res.parsedEnd;
+        });
+
+        if (dayReservations.length > 0) {
+            dayDiv.classList.add('has-reservation');
+
+            // Add icon tags (max 3 visible)
+            const iconsDiv = document.createElement('div');
+            iconsDiv.className = 'day-icons';
+
+            const maxIcons = 3;
+            const visibleRes = dayReservations.slice(0, maxIcons);
+            visibleRes.forEach(res => {
+                const iconSpan = document.createElement('span');
+                iconSpan.className = 'day-icon-tag';
+                iconSpan.textContent = res.organization_icon || '🏢';
+                iconsDiv.appendChild(iconSpan);
+
+                // Track for legend
+                legendOrgs.set(res.organization_name, res.organization_icon || '🏢');
+            });
+
+            if (dayReservations.length > maxIcons) {
+                const moreSpan = document.createElement('span');
+                moreSpan.className = 'day-more-tag';
+                moreSpan.textContent = `+${dayReservations.length - maxIcons}`;
+                iconsDiv.appendChild(moreSpan);
+            }
+            dayDiv.appendChild(iconsDiv);
+
+            // Status dots
+            const dotsDiv = document.createElement('div');
+            dotsDiv.className = 'status-dots';
+            const uniqueStatuses = [...new Set(dayReservations.map(r => r.status))];
+            uniqueStatuses.forEach(status => {
+                const dot = document.createElement('span');
+                dot.className = `status-dot ${status}`;
+                dotsDiv.appendChild(dot);
+            });
+            dayDiv.appendChild(dotsDiv);
+
+            // Tooltip on hover
+            dayDiv.addEventListener('mouseenter', (e) => {
+                const dateString = currentDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                const maxVisible = 3;
+                const visibleReservations = dayReservations.slice(0, maxVisible);
+                const hiddenCount = dayReservations.length - maxVisible;
+
+                let tooltipHtml = `
+                    <div style="font-weight: 700; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; color: #1b1464; font-size: 0.9rem;">
+                        📅 ${dateString}
+                    </div>
+                `;
+
+                tooltipHtml += visibleReservations.map(res => {
+                    let badgeColor = '#1b1464';
+                    if (res.status === 'completed') badgeColor = '#10b981';
+                    if (res.status === 'pending') badgeColor = '#e3000f';
+                    const icon = res.organization_icon || '🏢';
+
+                    return `
+                        <div style="margin-bottom: 10px; font-size: 0.8rem; line-height: 1.3;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                                <span style="font-weight: 600; color: #3e3c90; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;">
+                                    ${icon} ${res.organization_name}
+                                </span>
+                                <span style="background: ${badgeColor}22; color: ${badgeColor}; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">
+                                    ${res.status}
+                                </span>
+                            </div>
+                            <div style="color: #64748b; margin-top: 2px; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px;">
+                                📦 ${res.item_names || 'No items'}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                if (hiddenCount > 0) {
+                    tooltipHtml += `
+                        <div style="text-align: center; color: #94a3b8; font-size: 0.75rem; border-top: 1px solid #e2e8f0; padding-top: 8px; margin-top: 4px; font-style: italic;">
+                            + ${hiddenCount} more reservation${hiddenCount > 1 ? 's' : ''}
+                        </div>
+                    `;
+                }
+
+                tooltip.innerHTML = tooltipHtml;
+                tooltip.style.display = 'block';
+                tooltip.style.left = `${e.clientX + 15}px`;
+                tooltip.style.top = `${e.clientY + 15}px`;
+            });
+
+            dayDiv.addEventListener('mouseleave', () => {
+                tooltip.style.display = 'none';
+            });
+
+            dayDiv.addEventListener('mousemove', (e) => {
+                tooltip.style.left = `${e.clientX + 15}px`;
+                tooltip.style.top = `${e.clientY + 15}px`;
+            });
+
+            // Click to open Daily Manifest Modal
+            dayDiv.addEventListener('click', () => {
+                openManifestModal(currentDate, dayReservations);
+            });
+        }
+        grid.appendChild(dayDiv);
+    }
+
+    // Render Organization Legend
+    renderLegend(legendOrgs);
+}
+
+function renderLegend(legendOrgs) {
+    const legendContainer = document.getElementById('org-legend');
+    if (!legendContainer) return;
+
+    if (legendOrgs.size === 0) {
+        legendContainer.innerHTML = '<span style="color: #64748b; font-size: 0.8rem;">No reservations this month</span>';
+        return;
+    }
+
+    legendContainer.innerHTML = '';
+    legendOrgs.forEach((icon, name) => {
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        item.innerHTML = `<span class="legend-icon">${icon}</span><span class="legend-name">${name}</span>`;
+        legendContainer.appendChild(item);
+    });
+}
+
+// ==== EMOJI RANDOMIZER ====
+const EMOJI_CATEGORIES = [
+    // Faces & People
+    '😀','😂','😎','🤓','🤠','👽','👻','🤖','👾',
+    // Animals
+    '🐶','🐱','🦁','🐯','🐮','🐷','🐸','🐵','🐔','🐧','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷','🕸','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐕‍🦺','🐈','🐓','🦃','🦚','🦜','🦢','🦩','🕊','🐇','🦝','🦨','🦡','🦦','🦥','🐁','🐀','🐿','🦔',
+    // Nature
+    '🌲','🌳','🌴','🌵','🌾','🌿','☘️','🍀','🍁','🍂','🍃','🍄','🌰','🌹','🥀','🌺','🌻','🌼','🌷',
+    // Sports & Activities
+    '⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳','🪁','🏹','🎣','🤿','🥊','🥋','🎽','🛹','🛼','🛷','⛸','🥌','🎿','⛷','🏂','🪂','🏋️','🤼','🤸','⛹️','🤺','🤾','🏌️','🏇','🧘','🏄','🏊','🤽','🚣','🧗','🚵','🚴',
+    // Flags
+    '🇺🇸','🇬🇧','🇨🇦','🇦🇺','🇮🇳','🇳🇵','🇲🇽','🇧🇷','🇫🇷','🇩🇪','🇯🇵','🇰🇷','🇨🇳','🇿🇦','🇪🇸','🇮🇹'
+];
+
+document.getElementById('randomize-icon-btn').addEventListener('click', () => {
+    const randomEmoji = EMOJI_CATEGORIES[Math.floor(Math.random() * EMOJI_CATEGORIES.length)];
+    document.getElementById('org-icon').value = randomEmoji;
+});
+
+// ==== DAILY MANIFEST MODAL ====
+function openManifestModal(date, reservations) {
+    const modal = document.getElementById('manifest-modal');
+    const title = document.getElementById('manifest-date');
+    const body = document.getElementById('manifest-body');
+
+    title.textContent = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+    body.innerHTML = reservations.map(res => {
+        let badgeColor = '#1b1464';
+        if (res.status === 'completed') badgeColor = '#10b981';
+        if (res.status === 'pending') badgeColor = '#e3000f';
+
+        const startTime = new Date(res.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        const endTime = new Date(res.end_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+        return `
+            <div class="manifest-card">
+                <div class="manifest-header">
+                    <div class="manifest-org">
+                        <span style="font-size: 1.5rem;">${res.organization_icon || '🏢'}</span>
+                        <div>
+                            <div>${res.organization_name}</div>
+                            <div style="font-size: 0.75rem; color: #64748b; font-weight: 400;">Location: ${res.location_name || 'N/A'} • ${startTime} - ${endTime}</div>
+                        </div>
+                    </div>
+                    <span class="manifest-status" style="background: ${badgeColor}22; color: ${badgeColor}; border: 1px solid ${badgeColor};">
+                        ${res.status}
+                    </span>
+                </div>
+                <div class="manifest-items">
+                    <strong>Reserved Equipment:</strong><br>
+                    ${res.item_names || 'No items listed'}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    modal.style.display = 'flex';
+}
+
+document.getElementById('close-manifest').addEventListener('click', () => {
+    document.getElementById('manifest-modal').style.display = 'none';
+});
+
+// Close modal if clicking outside content
+document.getElementById('manifest-modal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+        e.currentTarget.style.display = 'none';
+    }
+});
