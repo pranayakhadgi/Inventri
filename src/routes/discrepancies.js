@@ -7,31 +7,49 @@ router.put('/:id/resolve', async (req, res) => {
     const discrepancyId = req.params.id;
 
     try {
-        //first check if the discrepancy exists
+        const { resolutionType, resolutionNotes } = req.body;
+
+        const validTypes = ['returned', 'lost', 'damaged', 'false-alarm'];
+
+        if (!resolutionType || !validTypes.includes(resolutionType)) {
+            return res.status(400).json({ error: 'Invalid or missing resolution type. Must be returned, lost, damaged, or false_alarm' });
+        }
+        //check if the discrepancy exists
         const check = await db.query(
-            'SELECT * FROM discrepancies WHERE discrepancy_id = $1', [discrepancyId]
+            'SELECT * FROM discrepancies WHERE discrepancy_id = $1',
+            [discrepancyId]
         );
 
         if (check.rowCount == 0) {
             return res.status(404).json({ error: 'Discrepancy not found' });
         }
 
+        if (check.rows[0].status === 'resolved') {
+            return res.status(400).json({ error: 'Discrepancy is already resolved' });
+        }
+
         //update discrepancy to resolved
         const result = await db.query(
-            `UPDATE discrepancies SET status = 'resolved', resolved_at = CURRENT_TIMESTAMP 
-            WHERE discrepancy_id = $1 RETURNING *`, [discrepancyId]
+            `UPDATE discrepancies SET status = 'resolved', resolved_at = CURRENT_TIMESTAMP, resolution_type = $2, resolution_notes = $3 
+            WHERE discrepancy_id = $1 RETURNING *`, [discrepancyId, resolutionType, resolutionNotes || null]
         );
 
-        //update the item status to 'available'
+        let targetItemStatus = 'available';
+        if (resolutionType == 'lost' || resolutionType == 'damaged') {
+            targetItemStatus = 'maintenance';
+        }
+
+        //update the item status using the target status
         await db.query(
-            `UPDATE items SET status = 'available'
-             WHERE item_id = (
-                 SELECT ri.item_id 
-                 FROM reservation_items ri
-                 JOIN discrepancies d ON ri.reservation_item_id = d.reservation_item_id
-                 WHERE d.discrepancy_id = $1
-             )`,
-            [discrepancyId]
+            `UPDATE items
+            SET status = $1
+            WHERE item_id = (
+                SELECT ri.item_id
+                FROM reservation_items ri
+                JOIN discrepancies d ON ri.reservation_item_id = d.reservation_item_id
+                WHERE d.discrepancy_id = $2
+            )`,
+            [targetItemStatus, discrepancyId]
         );
 
         res.json({
@@ -52,6 +70,8 @@ router.get('/', async (req, res) => {
                 d.status,
                 d.reported_at,
                 d.resolved_at,
+                d.resolution_type,
+                d.resolution_notes,
                 d.notes,
                 o.name as organization_name,
                 i.name as item_name,
