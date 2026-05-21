@@ -12,6 +12,7 @@ router.get('/', async (req, res) => {
              i.name,
              i.category,
              i.status,
+             i.image_url,
              l.name as location_name,
              l.type as location_type 
             FROM items i
