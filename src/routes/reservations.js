@@ -100,11 +100,15 @@ router.get('/:id', async (req, res) => {
 router.get('/', async (req, res) => {
     try {
         const result = await db.query(`
-            SELECT r.reservation_id, o.name as organization_name,
-             l.name as location_name, r.start_time, r.end_time, r.status
+            SELECT r.reservation_id, o.name as organization_name, o.icon as organization_icon,
+             l.name as location_name, r.start_time, r.end_time, r.status,
+             STRING_AGG(DISTINCT i.name, ', ') as item_names
              FROM reservations r
              JOIN organizations o ON r.organization_id = o.organization_id
              LEFT JOIN locations l ON r.location_id = l.location_id
+             LEFT JOIN reservation_items ri ON r.reservation_id = ri.reservation_id
+             LEFT JOIN items i ON ri.item_id = i.item_id
+             GROUP BY r.reservation_id, o.name, o.icon, l.name, r.start_time, r.end_time, r.status
              ORDER BY r.start_time DESC
             `);
 
