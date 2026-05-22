@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DP World Inventory System</title>
+    <title>Equipment Inventory System</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -12,7 +12,7 @@
     <div class="container">
         <div class="header">
             <h1>DP World Inventory System</h1>
-            <p class="subtitle">Logistics Tracking & Equipment Return Management</p>
+            <p class="subtitle">Club Logistics Tracking & Equipment Return Management</p>
         </div>
 
         <!-- Tab Navigation -->
@@ -281,6 +281,7 @@
                         <th>Status</th>
                         <th>Reported</th>
                         <th>Notes</th>
+                        <th>Resolution</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -308,7 +309,9 @@
         <div class="modal-content">
             <span class="close-modal" id="close-resolve-disc">&times;</span>
             <h2 style="margin-bottom: 1.5rem; color: #1e293b;">Resolve Discrepancy</h2>
-            <div id="resolve-disc-details" style="margin-bottom: 1.5rem;"></div>
+            <input type="hidden" id="resolve-disc-id">
+            <div id="resolve-disc-details" style="margin-bottom: 1rem;"></div>
+            <div id="resolve-consequence"></div>
             
             <div class="form-group">
                 <label>Resolution Type</label>

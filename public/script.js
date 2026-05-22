@@ -1,5 +1,24 @@
 const API_BASE = '';
 
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.style.display = 'none';
+}
+
 // Toast notifications
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
@@ -7,18 +26,6 @@ function showToast(message, type = 'success') {
     toast.className = `toast show ${type}`;
     setTimeout(() => toast.classList.remove('show'), 3000);
 }
-
-// Tab switching
-document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const tabName = btn.dataset.tab;
-        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(tabName).classList.add('active');
-        btn.classList.add('active');
-        loadTabData(tabName);
-    });
-});
 
 async function loadTabData(tabName) {
     if (tabName === 'dashboard') loadDashboard();
@@ -69,6 +76,10 @@ async function loadDashboard() {
             : '<p style="color: #94a3b8;">No recent activity</p>';
     } catch (err) {
         console.error('Dashboard error:', err);
+        const feed = document.getElementById('activity-feed');
+        if (feed) feed.innerHTML = '<p style="color: #ef4444;">Failed to load dashboard data.</p>';
+        const grid = document.getElementById('calendar-grid');
+        if (grid) grid.innerHTML = '<p style="color: #ef4444; padding: 1rem;">Failed to load calendar.</p>';
     }
 }
 
@@ -434,7 +445,46 @@ async function viewReservation(reservationId) {
     try {
         const response = await fetch(`${API_BASE}/reservations/${reservationId}`);
         const data = await response.json();
-        alert(`Reservation ${reservationId}\nOrganization: ${data.reservation.organization_name}\nItems: ${data.items.map(i => i.item_name).join(', ')}`);
+        const res = data.reservation;
+        const details = document.getElementById('view-res-details');
+
+        const itemsHtml = data.items.map(item => {
+            const discBadge = item.discrepancy_id
+                ? `<span class="status flagged" style="margin-left: 0.5rem;">${item.discrepancy_status || 'flagged'}</span>`
+                : '';
+            return `
+                <tr>
+                    <td>${escapeHtml(item.item_name)}</td>
+                    <td>${escapeHtml(item.category || '-')}</td>
+                    <td>${item.quantity_requested}</td>
+                    <td>${item.quantity_returned}</td>
+                    <td>${discBadge}</td>
+                </tr>
+            `;
+        }).join('');
+
+        details.innerHTML = `
+            <div style="margin-bottom: 1rem;">
+                <p><strong>Organization:</strong> ${escapeHtml(res.organization_name)}</p>
+                <p><strong>Location:</strong> ${escapeHtml(res.location_name || 'N/A')}</p>
+                <p><strong>Status:</strong> <span class="status ${res.status}">${res.status}</span></p>
+                <p><strong>Start:</strong> ${new Date(res.start_time).toLocaleString()}</p>
+                <p><strong>End:</strong> ${new Date(res.end_time).toLocaleString()}</p>
+            </div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left; padding: 0.5rem; border-bottom: 1px solid #e2e8f0;">Item</th>
+                        <th style="text-align: left; padding: 0.5rem; border-bottom: 1px solid #e2e8f0;">Category</th>
+                        <th style="text-align: left; padding: 0.5rem; border-bottom: 1px solid #e2e8f0;">Requested</th>
+                        <th style="text-align: left; padding: 0.5rem; border-bottom: 1px solid #e2e8f0;">Returned</th>
+                        <th style="text-align: left; padding: 0.5rem; border-bottom: 1px solid #e2e8f0;">Discrepancy</th>
+                    </tr>
+                </thead>
+                <tbody>${itemsHtml}</tbody>
+            </table>
+        `;
+        openModal('view-res-modal');
     } catch (err) {
         showToast('Failed to load reservation details', 'error');
     }
@@ -521,6 +571,8 @@ async function submitReturn(reservationId, items) {
 }
 
 // ===== DISCREPANCIES =====
+let cachedDiscrepancies = [];
+
 async function loadDiscrepancies() {
     try {
         const response = await fetch(`${API_BASE}/discrepancies`);
@@ -530,21 +582,29 @@ async function loadDiscrepancies() {
         document.getElementById('disc-flagged').textContent = data.flagged;
         document.getElementById('disc-resolved').textContent = data.resolved;
 
+        cachedDiscrepancies = data.data;
         const tbody = document.getElementById('discrepancies-body');
-        tbody.innerHTML = data.data.map(disc => `
+        tbody.innerHTML = data.data.map(disc => {
+            const resolutionCol = disc.status === 'resolved'
+                ? `${escapeHtml(disc.resolution_type || '-')}<br><small>${disc.resolved_at ? new Date(disc.resolved_at).toLocaleDateString() : ''}</small>`
+                : '—';
+            const actionCol = disc.status === 'flagged'
+                ? `<button class="btn btn-success btn-small resolve-disc-btn" data-id="${disc.discrepancy_id}">Resolve</button>`
+                : '—';
+            return `
             <tr>
                 <td>${disc.discrepancy_id}</td>
-                <td>${disc.organization_name}</td>
-                <td>${disc.item_name}</td>
-                <td>${disc.type}</td>
+                <td>${escapeHtml(disc.organization_name)}</td>
+                <td>${escapeHtml(disc.item_name)}</td>
+                <td>${escapeHtml(disc.type)}</td>
                 <td><span class="status ${disc.status}">${disc.status}</span></td>
                 <td>${new Date(disc.reported_at).toLocaleDateString()}</td>
-                <td>${disc.notes || '-'}</td>
-                <td>
-                    ${disc.status === 'flagged' ? `<button class="btn btn-success btn-small" onclick="openResolvePanel(${disc.discrepancy_id}, '${disc.item_name}')">Resolve</button>` : '—'}
-                </td>
+                <td>${escapeHtml(disc.notes || '-')}</td>
+                <td>${resolutionCol}</td>
+                <td>${actionCol}</td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
 
         document.getElementById('loading-discrepancies').style.display = 'none';
         document.getElementById('discrepancies-table').style.display = 'table';
@@ -554,27 +614,21 @@ async function loadDiscrepancies() {
     }
 }
 
-function openResolvePanel(discrepancyId, itemName) {
+function openResolvePanel(discrepancyId, itemName, orgName) {
     document.getElementById('resolve-disc-id').value = discrepancyId;
-    document.getElementById('resolution-title').textContent = `Resolve Discrepancy for: ${itemName}`;
-
-    // Reset form inputs
-    document.getElementById('resolution-type').value = '';
-    document.getElementById('resolution-notes').value = '';
-
-    const preview = document.getElementById('resolution-consequence');
-    preview.style.display = 'none';
-
-    // Show the panel and scroll smoothly to it
-    const panel = document.getElementById('resolution-panel');
-    panel.style.display = 'block';
-    panel.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('resolve-disc-details').innerHTML = `
+        <p style="margin: 0; color: #475569;"><strong>Item:</strong> ${escapeHtml(itemName)}</p>
+        ${orgName ? `<p style="margin: 0.25rem 0 0; color: #475569;"><strong>Organization:</strong> ${escapeHtml(orgName)}</p>` : ''}
+    `;
+    document.getElementById('resolve-type').value = '';
+    document.getElementById('resolve-notes').value = '';
+    updateResolveConsequence('');
+    openModal('resolve-disc-modal');
 }
 
-// Live Consequence Warning Preview
-document.getElementById('resolution-type').addEventListener('change', (e) => {
-    const value = e.target.value;
-    const preview = document.getElementById('resolution-consequence');
+function updateResolveConsequence(value) {
+    const preview = document.getElementById('resolve-consequence');
+    if (!preview) return;
 
     if (!value) {
         preview.style.display = 'none';
@@ -587,25 +641,19 @@ document.getElementById('resolution-type').addEventListener('change', (e) => {
         preview.style.background = '#064e3b';
         preview.style.color = '#34d399';
         preview.style.border = '1px solid #10b981';
-        preview.textContent = '✅ Available Action: Item status will be reset to "available" immediately.';
+        preview.textContent = 'Available Action: Item status will be reset to "available" immediately.';
     } else if (value === 'lost' || value === 'damaged') {
         preview.style.background = '#450a0a';
         preview.style.color = '#fca5a5';
         preview.style.border = '1px solid #ef4444';
-        preview.textContent = '⚠️ Maintenance Action: Item status will be set to "maintenance". It will remain locked from future reservations.';
+        preview.textContent = 'Maintenance Action: Item status will be set to "maintenance". It will remain locked from future reservations.';
     }
-});
+}
 
-// Cancel Button hides the form
-document.getElementById('cancel-resolve-btn').addEventListener('click', () => {
-    document.getElementById('resolution-panel').style.display = 'none';
-});
-
-// Submit Button Action
-document.getElementById('submit-resolve-btn').addEventListener('click', async () => {
+async function submitResolveDiscrepancy() {
     const discrepancyId = document.getElementById('resolve-disc-id').value;
-    const resolutionType = document.getElementById('resolution-type').value;
-    const resolutionNotes = document.getElementById('resolution-notes').value.trim();
+    const resolutionType = document.getElementById('resolve-type').value;
+    const resolutionNotes = document.getElementById('resolve-notes').value.trim();
 
     if (!resolutionType || !resolutionNotes) {
         showToast('Please fill out all resolution fields.', 'error');
@@ -616,18 +664,16 @@ document.getElementById('submit-resolve-btn').addEventListener('click', async ()
         const response = await fetch(`${API_BASE}/discrepancies/${discrepancyId}/resolve`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                resolutionType,
-                resolutionNotes
-            })
+            body: JSON.stringify({ resolutionType, resolutionNotes })
         });
 
         if (response.ok) {
             showToast('Discrepancy successfully resolved!', 'success');
-            document.getElementById('resolution-panel').style.display = 'none';
+            closeModal('resolve-disc-modal');
             loadDiscrepancies();
-            loadInventory(); // Sync the item status in inventory tab immediately
-            loadReservations(); // Sync the reservations tab immediately
+            loadInventory();
+            loadReservations();
+            loadDashboard();
         } else {
             const err = await response.json();
             showToast(err.error || 'Failed to resolve discrepancy', 'error');
@@ -635,16 +681,7 @@ document.getElementById('submit-resolve-btn').addEventListener('click', async ()
     } catch (err) {
         showToast('Error connecting to server', 'error');
     }
-});
-
-// CSV Download
-document.getElementById('download-csv').addEventListener('click', (e) => {
-    e.preventDefault();
-    window.location.href = `${API_BASE}/reports/csv`;
-});
-
-// Initial load
-loadDashboard();
+}
 
 // ==== CALENDAR LOGIC ====
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -667,20 +704,6 @@ function canGoPrev() {
 function canGoNext() {
     return !(calendarYear === CAL_MAX_YEAR && calendarMonth === 11);
 }
-
-document.getElementById('cal-prev').addEventListener('click', () => {
-    if (!canGoPrev()) return;
-    calendarMonth--;
-    if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
-    renderCalendar(cachedReservations);
-});
-
-document.getElementById('cal-next').addEventListener('click', () => {
-    if (!canGoNext()) return;
-    calendarMonth++;
-    if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
-    renderCalendar(cachedReservations);
-});
 
 function renderCalendar(reservations) {
     cachedReservations = reservations;
@@ -884,20 +907,16 @@ const EMOJI_CATEGORIES = [
     '🇺🇸','🇬🇧','🇨🇦','🇦🇺','🇮🇳','🇳🇵','🇲🇽','🇧🇷','🇫🇷','🇩🇪','🇯🇵','🇰🇷','🇨🇳','🇿🇦','🇪🇸','🇮🇹'
 ];
 
-document.getElementById('randomize-icon-btn').addEventListener('click', () => {
-    const randomEmoji = EMOJI_CATEGORIES[Math.floor(Math.random() * EMOJI_CATEGORIES.length)];
-    document.getElementById('org-icon').value = randomEmoji;
-});
-
 // ==== DAILY MANIFEST MODAL ====
 function openManifestModal(date, reservations) {
-    const modal = document.getElementById('manifest-modal');
-    const title = document.getElementById('manifest-date');
-    const body = document.getElementById('manifest-body');
+    const title = document.getElementById('manifest-title');
+    const body = document.getElementById('manifest-details');
 
     title.textContent = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
-    body.innerHTML = reservations.map(res => {
+    body.innerHTML = reservations.length === 0
+        ? '<p style="color: #64748b;">No reservations for this day.</p>'
+        : reservations.map(res => {
         let badgeColor = '#1b1464';
         if (res.status === 'completed') badgeColor = '#10b981';
         if (res.status === 'pending') badgeColor = '#e3000f';
@@ -927,16 +946,87 @@ function openManifestModal(date, reservations) {
         `;
     }).join('');
 
-    modal.style.display = 'flex';
+    openModal('manifest-modal');
 }
 
-document.getElementById('close-manifest').addEventListener('click', () => {
-    document.getElementById('manifest-modal').style.display = 'none';
-});
+function initApp() {
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabName = btn.dataset.tab;
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            btn.classList.add('active');
+            loadTabData(tabName);
+        });
+    });
 
-// Close modal if clicking outside content
-document.getElementById('manifest-modal').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) {
-        e.currentTarget.style.display = 'none';
+    // Discrepancies: event delegation for Resolve buttons
+    document.getElementById('discrepancies-body').addEventListener('click', (e) => {
+        const btn = e.target.closest('.resolve-disc-btn');
+        if (!btn) return;
+        const disc = cachedDiscrepancies.find(d => String(d.discrepancy_id) === btn.dataset.id);
+        if (!disc) return;
+        openResolvePanel(disc.discrepancy_id, disc.item_name, disc.organization_name);
+    });
+
+    // Resolve discrepancy modal
+    document.getElementById('resolve-type').addEventListener('change', (e) => {
+        updateResolveConsequence(e.target.value);
+    });
+    document.getElementById('confirm-resolve-btn').addEventListener('click', submitResolveDiscrepancy);
+    document.getElementById('close-resolve-disc').addEventListener('click', () => closeModal('resolve-disc-modal'));
+    document.getElementById('resolve-disc-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'resolve-disc-modal') closeModal('resolve-disc-modal');
+    });
+
+    // View reservation modal
+    document.getElementById('close-view-res').addEventListener('click', () => closeModal('view-res-modal'));
+    document.getElementById('view-res-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'view-res-modal') closeModal('view-res-modal');
+    });
+
+    // Daily manifest modal
+    document.getElementById('close-manifest-modal').addEventListener('click', () => closeModal('manifest-modal'));
+    document.getElementById('manifest-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'manifest-modal') closeModal('manifest-modal');
+    });
+
+    // CSV download
+    document.getElementById('download-csv').addEventListener('click', (e) => {
+        e.preventDefault();
+        window.location.href = `${API_BASE}/reports/csv`;
+    });
+
+    // Calendar navigation
+    document.getElementById('cal-prev').addEventListener('click', () => {
+        if (!canGoPrev()) return;
+        calendarMonth--;
+        if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
+        renderCalendar(cachedReservations);
+    });
+    document.getElementById('cal-next').addEventListener('click', () => {
+        if (!canGoNext()) return;
+        calendarMonth++;
+        if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+        renderCalendar(cachedReservations);
+    });
+
+    // Emoji randomizer
+    const randomizeBtn = document.getElementById('randomize-icon-btn');
+    if (randomizeBtn) {
+        randomizeBtn.addEventListener('click', () => {
+            const randomEmoji = EMOJI_CATEGORIES[Math.floor(Math.random() * EMOJI_CATEGORIES.length)];
+            document.getElementById('org-icon').value = randomEmoji;
+        });
     }
-});
+
+    loadDashboard();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}
