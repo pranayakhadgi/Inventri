@@ -557,17 +557,23 @@ async function viewReservation(reservationId) {
 // ===== RETURNS =====
 async function loadReturnsTab() {
     try {
-        const response = await fetch(`${API_BASE}/reservations`);
-        const data = await response.json();
+        const resApi = await fetchApi('/reservations');
+
+        if (!resApi.ok) {
+            showToast(resApi.error || 'Failed to load returns', 'error');
+        }
 
         const select = document.getElementById('return-res-select');
-        select.innerHTML = '<option value="">Choose a reservation...</option>' + data.data
-            .filter(r => r.status !== 'completed')
-            .map(r => `<option value="${r.reservation_id}">${r.reservation_id} - ${r.organization_name}</option>`)
-            .join('');
+        const pending = resApi.data.filter(r => r.status !== 'completed');
+        select.innerHTML = '<option value="">Choose a reservation...</option>' + (
+            pending.length === 0
+                ? ''
+                : pending.map(r => `<option value="${r.reservation_id}">${r.reservation_id} - ${escapeHtml(r.organization_name)}</option>`).join('')
+        );
 
-        select.addEventListener('change', () => loadReturnForm(select.value));
+        select.onchange = () => loadReturnForm(select.value);
     } catch (err) {
+        console.error('Returns error:', err);
         showToast('Failed to load returns', 'error');
     }
 }
@@ -639,16 +645,22 @@ let cachedDiscrepancies = [];
 
 async function loadDiscrepancies() {
     try {
-        const response = await fetch(`${API_BASE}/discrepancies`);
-        const data = await response.json();
+        const discApi = await fetchApi('/discrepancies');
 
-        document.getElementById('disc-total').textContent = data.count;
-        document.getElementById('disc-flagged').textContent = data.flagged;
-        document.getElementById('disc-resolved').textContent = data.resolved;
+        if (!discApi.ok) {
+            showToast(discApi.error || 'Failed to load discrepancies', 'error');
+        }
 
-        cachedDiscrepancies = data.data;
+        const meta = discApi.body || {};
+        document.getElementById('disc-total').textContent = meta.count ?? 0;
+        document.getElementById('disc-flagged').textContent = meta.flagged ?? 0;
+        document.getElementById('disc-resolved').textContent = meta.resolved ?? 0;
+
+        cachedDiscrepancies = discApi.data;
         const tbody = document.getElementById('discrepancies-body');
-        tbody.innerHTML = data.data.map(disc => {
+        tbody.innerHTML = discApi.data.length === 0
+            ? '<tr><td colspan="9" style="text-align:center;color:#94a3b8;">No discrepancies found</td></tr>'
+            : discApi.data.map(disc => {
             const resolutionCol = disc.status === 'resolved'
                 ? `${escapeHtml(disc.resolution_type || '-')}<br><small>${disc.resolved_at ? new Date(disc.resolved_at).toLocaleDateString() : ''}</small>`
                 : '—';
