@@ -1,5 +1,17 @@
 const API_BASE = '';
 
+async function fetchApi(path) {
+    const response = await fetch(`${API_BASE}${path}`);
+    let body;
+    try {
+        body = await response.json();
+    } catch (e) {
+        body = { error: 'Invalid JSON response' };
+    }
+    const data = Array.isArray(body?.data) ? body.data : [];
+    return { ok: response.ok, status: response.status, data, body, error: body?.error || (!response.ok ? `HTTP ${response.status}` : null) };
+}
+
 function escapeHtml(str) {
     if (!str) return '';
     return String(str)
@@ -36,27 +48,62 @@ async function loadTabData(tabName) {
 }
 
 // ===== DASHBOARD =====
+function pickInitialCalendarMonth(reservations) {
+    if (!reservations.length) return;
+
+    const countMatchesInMonth = (year, month) => {
+        const parsed = reservations.map(res => ({
+            parsedStart: new Date(res.start_time).setHours(0, 0, 0, 0),
+            parsedEnd: res.end_time ? new Date(res.end_time).setHours(23, 59, 59, 999) : Infinity
+        }));
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayStart = new Date(year, month, day).setHours(0, 0, 0, 0);
+            if (parsed.some(res => dayStart >= res.parsedStart && dayStart <= res.parsedEnd)) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    if (countMatchesInMonth(calendarYear, calendarMonth)) return;
+
+    const earliest = reservations.reduce((a, b) =>
+        new Date(a.start_time) < new Date(b.start_time) ? a : b
+    );
+    const d = new Date(earliest.start_time);
+    calendarMonth = d.getMonth();
+    calendarYear = d.getFullYear();
+}
+
 async function loadDashboard() {
     try {
-        const [items, reservations, discrepancies] = await Promise.all([
-            fetch(`${API_BASE}/items`).then(r => r.json()),
-            fetch(`${API_BASE}/reservations`).then(r => r.json()),
-            fetch(`${API_BASE}/discrepancies`).then(r => r.json())
+        const [itemsApi, resApi, discApi] = await Promise.all([
+            fetchApi('/items'),
+            fetchApi('/reservations'),
+            fetchApi('/discrepancies')
         ]);
 
-        // Removed stat card DOM updates since they are replaced by the placeholder
-        renderCalendar(reservations.data);
+        if (!resApi.ok) {
+            showToast(resApi.error || 'Failed to load reservations', 'error');
+        }
+
+        const resData = resApi.data;
+        const discData = discApi.data;
+
+        pickInitialCalendarMonth(resData);
+        renderCalendar(resData);
 
         // Activity feed
         const recentItems = [
-            ...discrepancies.data.slice(0, 3).map(d => ({
+            ...discData.slice(0, 3).map(d => ({
                 rawTime: new Date(d.reported_at).getTime(),
                 time: new Date(d.reported_at).toLocaleDateString(),
                 text: d.status === 'resolved' 
                     ? `✅ The discrepancy for the ${d.item_name} was resolved.` 
                     : `⚠️ A discrepancy was flagged for the ${d.item_name}.`
             })),
-            ...reservations.data.slice(0, 3).map(r => ({
+            ...resData.slice(0, 3).map(r => ({
                 rawTime: new Date(r.start_time).getTime(),
                 time: new Date(r.start_time).toLocaleDateString(),
                 text: r.status === 'completed' 
@@ -86,25 +133,32 @@ async function loadDashboard() {
 // ===== INVENTORY =====
 async function loadInventory() {
     try {
-        const response = await fetch(`${API_BASE}/items`);
-        const data = await response.json();
+        const itemsApi = await fetchApi('/items');
+
+        if (!itemsApi.ok) {
+            showToast(itemsApi.error || 'Failed to load inventory', 'error');
+        }
 
         const container = document.getElementById('inventory-body');
+        const items = itemsApi.data;
         
         // Group items by category
         const categorized = {};
-        data.data.forEach(item => {
+        items.forEach(item => {
             const cat = item.category || 'Uncategorized';
             if (!categorized[cat]) categorized[cat] = [];
             categorized[cat].push(item);
         });
 
         let html = '';
-        for (const [category, items] of Object.entries(categorized)) {
+        if (items.length === 0) {
+            html = '<p style="color: #94a3b8; padding: 1rem;">No inventory items found.</p>';
+        }
+        for (const [category, categoryItems] of Object.entries(categorized)) {
             html += `<h3 class="category-title">${category}</h3>`;
             html += `<div class="inventory-grid">`;
             
-            items.forEach(item => {
+            categoryItems.forEach(item => {
                 let badgeClass = item.status === 'available' ? 'status-green' : (item.status === 'checked_out' ? 'status-amber' : 'status-red');
                 let imgHtml = item.image_url 
                     ? `<div class="card-image-wrapper"><img src="${item.image_url}" alt="${item.name}" class="inventory-card-image"></div>`
@@ -291,22 +345,32 @@ document.getElementById('submit-loc-btn').addEventListener('click', async () => 
 // ===== RESERVATIONS =====
 async function loadReservations() {
     try {
-        const [orgsRes, itemsRes, locationsRes, reservationsRes] = await Promise.all([
-            fetch(`${API_BASE}/organizations`).then(r => r.json()),
-            fetch(`${API_BASE}/items`).then(r => r.json()),
-            fetch(`${API_BASE}/locations`).then(r => r.json()),
-            fetch(`${API_BASE}/reservations`).then(r => r.json())
+        const [orgsApi, itemsApi, locsApi, resApi] = await Promise.all([
+            fetchApi('/organizations'),
+            fetchApi('/items'),
+            fetchApi('/locations'),
+            fetchApi('/reservations')
         ]);
+
+        const orgData = orgsApi.data;
+        const itemData = itemsApi.data;
+        const locData = locsApi.data;
+        const resData = resApi.data;
+
+        if (!itemsApi.ok) showToast(itemsApi.error || 'Failed to load items', 'error');
+        if (!orgsApi.ok) showToast(orgsApi.error || 'Failed to load organizations', 'error');
 
         // Populate org select
         const orgSelect = document.getElementById('org-select');
-        orgSelect.innerHTML = '<option value="">Select Organization</option>' + orgsRes.data.map(org => `
+        orgSelect.innerHTML = '<option value="">Select Organization</option>' + orgData.map(org => `
             <option value="${org.organization_id}">${org.name}</option>
         `).join('');
 
         // Populate items checkboxes
         const itemsCheckboxes = document.getElementById('items-checkboxes');
-        itemsCheckboxes.innerHTML = itemsRes.data.map(item => {
+        itemsCheckboxes.innerHTML = itemData.length === 0
+            ? '<p style="color: #94a3b8;">No items available. Add items in Inventory or check API connection.</p>'
+            : itemData.map(item => {
             const available = item.status === 'available';
             return `
             <div class="checkbox-item ${available ? '' : 'unavailable'}">
@@ -327,14 +391,14 @@ async function loadReservations() {
         // Populate locations select
         const locationSelect = document.getElementById('location-select');
         locationSelect.innerHTML = '<option value="">Select Location</option>'
-            + locationsRes.data.map(loc => `
+            + locData.map(loc => `
             <option value="${loc.location_id}">${loc.name} (${loc.type})
             </option>
             `).join('');
 
         // Populate reservations table
         const tbody = document.getElementById('reservations-body');
-        tbody.innerHTML = reservationsRes.data.map(res => `
+        tbody.innerHTML = resData.map(res => `
             <tr>
                 <td>${res.reservation_id}</td>
                 <td>${res.organization_name}</td>
@@ -706,10 +770,12 @@ function canGoNext() {
 }
 
 function renderCalendar(reservations) {
-    cachedReservations = reservations;
+    cachedReservations = reservations || [];
     const grid = document.getElementById('calendar-grid');
     const tooltip = document.getElementById('calendar-tooltip');
     if (!grid) return;
+
+    const safeReservations = Array.isArray(reservations) ? reservations : [];
 
     grid.innerHTML = '';
     updateCalendarLabel();
@@ -738,7 +804,7 @@ function renderCalendar(reservations) {
     const legendOrgs = new Map();
 
     // Optimize: Pre-parse reservation dates outside the loop
-    const parsedReservations = reservations.map(res => ({
+    const parsedReservations = safeReservations.map(res => ({
         ...res,
         parsedStart: new Date(res.start_time).setHours(0, 0, 0, 0),
         parsedEnd: res.end_time ? new Date(res.end_time).setHours(23, 59, 59, 999) : Infinity
@@ -765,7 +831,6 @@ function renderCalendar(reservations) {
         const dayReservations = parsedReservations.filter(res => {
             return dayStart >= res.parsedStart && dayStart <= res.parsedEnd;
         });
-
         if (dayReservations.length > 0) {
             dayDiv.classList.add('has-reservation');
 
