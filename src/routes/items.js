@@ -14,10 +14,10 @@ router.get('/', async (req, res) => {
              i.status,
              i.image_url,
              l.name as location_name,
-             l.type as location_type 
+             l.type as location_type
             FROM items i
             LEFT JOIN locations l ON i.current_location_id = l.location_id
-            ORDER BY i.name 
+            ORDER BY i.name
         `);
 
         res.json({
@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-    const { name, category, location_id, status } = req.body;
+    const { name, category, location_id, status, image_url } = req.body;
 
     if (!name) {
         return res.status(400).json({ error: 'Item name is required' });
@@ -39,10 +39,10 @@ router.post('/', async (req, res) => {
     try {
         const result = await db.query(
             `INSERT INTO items
-            (name, category, current_location_id, status)
-            VALUES ($1, $2, $3, $4)
+            (name, category, current_location_id, status, image_url)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING *`,
-            [name, category || null, location_id || null, status || 'available']
+            [name, category || null, location_id || null, status || 'available', image_url || null]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {

@@ -214,6 +214,7 @@ document.getElementById('submit-item-btn').addEventListener('click', async () =>
     const name = document.getElementById('item-name').value.trim();
     const category = document.getElementById('item-category').value;
     const locationId = document.getElementById('item-location').value;
+    const imageUrl = document.getElementById('item-image-url').value.trim();
 
     if (!name) {
         showToast('Item name is required', 'error');
@@ -227,7 +228,8 @@ document.getElementById('submit-item-btn').addEventListener('click', async () =>
             body: JSON.stringify({
                 name,
                 category: category || null,
-                location_id: locationId ? parseInt(locationId) : null
+                location_id: locationId ? parseInt(locationId) : null,
+                image_url: imageUrl || null
             })
         });
 
@@ -1005,7 +1007,7 @@ function openManifestModal(date, reservations) {
             <div class="manifest-card">
                 <div class="manifest-header">
                     <div class="manifest-org">
-                        <span style="font-size: 1.5rem;">${res.organization_icon || '🏢'}</span>
+                        <span style="font-size: 1.5rem;">🏢</span>
                         <div>
                             <div>${res.organization_name}</div>
                             <div style="font-size: 0.75rem; color: #64748b; font-weight: 400;">Location: ${res.location_name || 'N/A'} • ${startTime} - ${endTime}</div>
@@ -1094,7 +1096,8 @@ function initApp() {
     const randomizeBtn = document.getElementById('randomize-icon-btn');
     if (randomizeBtn) {
         randomizeBtn.addEventListener('click', () => {
-            const randomEmoji = EMOJI_CATEGORIES[Math.floor(Math.random() * EMOJI_CATEGORIES.length)];
+            const emojis = ['🏢', '🎓', '🏫', '📚', '⚽', '🎭', '🎨', '🔬', '💼', '🌍'];
+            const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
             document.getElementById('org-icon').value = randomEmoji;
         });
     }

@@ -30,8 +30,8 @@ router.put('/:id/resolve', async (req, res) => {
 
         //update discrepancy to resolved
         const result = await db.query(
-            `UPDATE discrepancies SET status = 'resolved', resolved_at = CURRENT_TIMESTAMP, resolution_type = $2, resolution_notes = $3 
-            WHERE discrepancy_id = $1 RETURNING *`, [discrepancyId, resolutionType, resolutionNotes || null]
+            `UPDATE discrepancies SET status = 'resolved', resolved_at = CURRENT_TIMESTAMP
+            WHERE discrepancy_id = $1 RETURNING *`, [discrepancyId]
         );
 
         let targetItemStatus = 'available';
@@ -70,8 +70,6 @@ router.get('/', async (req, res) => {
                 d.status,
                 d.reported_at,
                 d.resolved_at,
-                d.resolution_type,
-                d.resolution_notes,
                 d.notes,
                 o.name as organization_name,
                 i.name as item_name,
@@ -84,7 +82,7 @@ router.get('/', async (req, res) => {
             JOIN items i ON ri.item_id = i.item_id
             JOIN reservations r ON ri.reservation_id = r.reservation_id
             JOIN organizations o ON r.organization_id = o.organization_id
-            ORDER BY d.reported_at DESC       
+            ORDER BY d.reported_at DESC
             `);
 
         res.json({

@@ -14,12 +14,12 @@ INSERT INTO locations (name, type, address) VALUES
 ('Baptist Student Union', 'off_campus', '100 N Avenue, Kirksville');
 
  -- 3. ITEMS (linked to locations)
-INSERT INTO items (name, category, current_location_id, status) VALUES
-('Shure SM58 Microphone', 'Audio/Visual', 1, 'available'),
-('6-Foor Folding Table', 'Furniture', 1, 'available'),
-('Epson Projector', 'Audio/Visual', 2, 'available'),
-('Extension Cord (50ft)', 'Utilities', 1, 'checked_out'),
-('Folding Chairs (Set of 10)', 'Furniture', 3, 'available');
+INSERT INTO items (name, category, current_location_id, status, image_url) VALUES
+('Shure SM58 Microphone', 'Audio/Visual', 1, 'available', 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400&h=300&fit=crop'),
+('6-Foot Folding Table', 'Furniture', 1, 'available', 'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=400&h=300&fit=crop'),
+('Epson Projector', 'Audio/Visual', 2, 'available', 'https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=400&h=300&fit=crop'),
+('Extension Cord (50ft)', 'Utilities', 1, 'checked_out', 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop'),
+('Folding Chairs (Set of 10)', 'Furniture', 3, 'available', 'https://images.unsplash.com/photo-1592078615290-033ee584e267?w=400&h=300&fit=crop');
 
  -- 4. RESERVATIONS (Scenario: Namaste Nepal completed the reservations)
 INSERT INTO reservations (organization_id, location_id, start_time, end_time, status) VALUES

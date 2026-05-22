@@ -2,34 +2,55 @@ const { Pool } = require('pg');
 
 const isDeployed = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
 
+// Parse connection string to add Neon-specific parameters
+let connectionString = process.env.DATABASE_URL;
+
+if (connectionString && isDeployed) {
+    // Add Neon-specific SSL parameters if not already present
+    if (!connectionString.includes('sslmode=')) {
+        connectionString += connectionString.includes('?') ? '&sslmode=require' : '?sslmode=require';
+    }
+}
+
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: isDeployed && process.env.DATABASE_URL
-        ? { rejectUnauthorized: false }
-        : false
+    connectionString: connectionString,
+    ssl: isDeployed && connectionString
+        ? {
+            rejectUnauthorized: true,
+            // Neon requires these SSL settings
+            sslmode: 'require'
+        }
+        : false,
+    // Connection pooling for serverless environments
+    max: 1, // Single connection per function instance
+    idleTimeoutMillis: 30000, // Close idle connections after 30s
+    connectionTimeoutMillis: 10000, // Timeout after 10s
 });
 
-//error handling within startup connection (test)
+// Log database configuration (without exposing sensitive data)
 if (!process.env.DATABASE_URL) {
     console.error('DATABASE_URL is not set. API routes that use the database will return 500.');
 } else {
-    pool.query('SELECT NOW()', (err, res) => {
-        if (err) {
-            console.error('Database connection failed:', err.message);
-        } else {
-            console.log('Database connected at:', res.rows[0].now);
-        }
-    });
+    console.log('Database configured for', isDeployed ? 'production (Vercel)' : 'development');
 }
 
 module.exports = {
-    query: (text, params) => {
+    query: async (text, params) => {
         if (!process.env.DATABASE_URL) {
-            return Promise.reject(new Error(
+            throw new Error(
                 'DATABASE_URL is not configured. Add it in Vercel Project Settings → Environment Variables.'
-            ));
+            );
         }
-        return pool.query(text, params);
+        
+        try {
+            const result = await pool.query(text, params);
+            return result;
+        } catch (err) {
+            console.error('Database query error:', err.message);
+            throw err;
+        }
     },
+    // Export pool for health checks
+    pool
 };
 
