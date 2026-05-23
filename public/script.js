@@ -72,6 +72,11 @@ function pickInitialCalendarMonth(reservations) {
         new Date(a.start_time) < new Date(b.start_time) ? a : b
     );
     const d = new Date(earliest.start_time);
+    
+    if (calendarMonth !== d.getMonth() || calendarYear !== d.getFullYear()) {
+        showToast(`Jumped to ${d.toLocaleString('default', { month: 'long' })} ${d.getFullYear()} for the earliest reservation.`, 'success');
+    }
+    
     calendarMonth = d.getMonth();
     calendarYear = d.getFullYear();
 }
@@ -99,14 +104,14 @@ async function loadDashboard() {
             ...discData.slice(0, 3).map(d => ({
                 rawTime: new Date(d.reported_at).getTime(),
                 time: new Date(d.reported_at).toLocaleDateString(),
-                text: d.status === 'resolved' 
-                    ? `✅ The discrepancy for the ${d.item_name} was resolved.` 
+                text: d.status === 'resolved'
+                    ? `✅ The discrepancy for the ${d.item_name} was resolved.`
                     : `⚠️ A discrepancy was flagged for the ${d.item_name}.`
             })),
             ...resData.slice(0, 3).map(r => ({
                 rawTime: new Date(r.start_time).getTime(),
                 time: new Date(r.start_time).toLocaleDateString(),
-                text: r.status === 'completed' 
+                text: r.status === 'completed'
                     ? `📦 ${r.organization_name} returned their items.`
                     : `📅 ${r.organization_name} created a new reservation.`
             }))
@@ -141,7 +146,7 @@ async function loadInventory() {
 
         const container = document.getElementById('inventory-body');
         const items = itemsApi.data;
-        
+
         // Group items by category
         const categorized = {};
         items.forEach(item => {
@@ -157,13 +162,13 @@ async function loadInventory() {
         for (const [category, categoryItems] of Object.entries(categorized)) {
             html += `<h3 class="category-title">${category}</h3>`;
             html += `<div class="inventory-grid">`;
-            
+
             categoryItems.forEach(item => {
                 let badgeClass = item.status === 'available' ? 'status-green' : (item.status === 'checked_out' ? 'status-amber' : 'status-red');
-                let imgHtml = item.image_url 
+                let imgHtml = item.image_url
                     ? `<div class="card-image-wrapper"><img src="${item.image_url}" alt="${item.name}" class="inventory-card-image"></div>`
                     : `<div class="card-image-wrapper placeholder"><span style="font-size:2rem">📦</span></div>`;
-                    
+
                 html += `
                     <div class="inventory-card">
                         ${imgHtml}
@@ -194,18 +199,6 @@ async function loadInventory() {
 }
 
 // ===== ADD ITEM =====
-document.getElementById('new-item-btn').addEventListener('click', () => {
-    // Populate location dropdown from already-fetched data
-    fetch('/locations').then(r => r.json()).then(data => {
-        const select = document.getElementById('item-location');
-        select.innerHTML = '<option value="">Select Location</option>'
-            + data.data.map(l => `
-                <option value="${l.location_id}">${l.name}</option>
-            `).join('');
-    });
-    document.getElementById('new-item-form').style.display = 'block';
-});
-
 document.getElementById('cancel-item-btn').addEventListener('click', () => {
     document.getElementById('new-item-form').style.display = 'none';
 });
@@ -245,6 +238,24 @@ document.getElementById('submit-item-btn').addEventListener('click', async () =>
     } catch (err) {
         showToast('Error adding item', 'error');
     }
+});
+
+function provokeAnswer() {
+    let userChoice = confirm("Do you want to delete this item?");
+
+    if (userChoice) {
+        showToast('Item deleted!', 'success');
+        document.getElementById('remove-item-form').style.display = 'none';
+        document.getElementById('add-item-form').reset();
+        loadInventory();
+    }
+    else {
+        showToast("Item not deleted", "error");
+    }
+}
+
+document.getElementById('remove-item-btn').addEventListener('click', () => {
+    document.getElementById('remove-item-form').style.display = 'block';
 });
 
 // ===== ORGANIZATIONS =====
@@ -373,8 +384,8 @@ async function loadReservations() {
         itemsCheckboxes.innerHTML = itemData.length === 0
             ? '<p style="color: #94a3b8;">No items available. Add items in Inventory or check API connection.</p>'
             : itemData.map(item => {
-            const available = item.status === 'available';
-            return `
+                const available = item.status === 'available';
+                return `
             <div class="checkbox-item ${available ? '' : 'unavailable'}">
                 <input type="checkbox" 
                     id="item-${item.item_id}" 
@@ -663,13 +674,13 @@ async function loadDiscrepancies() {
         tbody.innerHTML = discApi.data.length === 0
             ? '<tr><td colspan="9" style="text-align:center;color:#94a3b8;">No discrepancies found</td></tr>'
             : discApi.data.map(disc => {
-            const resolutionCol = disc.status === 'resolved'
-                ? `${escapeHtml(disc.resolution_type || '-')}<br><small>${disc.resolved_at ? new Date(disc.resolved_at).toLocaleDateString() : ''}</small>`
-                : '—';
-            const actionCol = disc.status === 'flagged'
-                ? `<button class="btn btn-success btn-small resolve-disc-btn" data-id="${disc.discrepancy_id}">Resolve</button>`
-                : '—';
-            return `
+                const resolutionCol = disc.status === 'resolved'
+                    ? `${escapeHtml(disc.resolution_type || '-')}<br><small>${disc.resolved_at ? new Date(disc.resolved_at).toLocaleDateString() : ''}</small>`
+                    : '—';
+                const actionCol = disc.status === 'flagged'
+                    ? `<button class="btn btn-success btn-small resolve-disc-btn" data-id="${disc.discrepancy_id}">Resolve</button>`
+                    : '—';
+                return `
             <tr>
                 <td>${disc.discrepancy_id}</td>
                 <td>${escapeHtml(disc.organization_name)}</td>
@@ -682,7 +693,7 @@ async function loadDiscrepancies() {
                 <td>${actionCol}</td>
             </tr>
         `;
-        }).join('');
+            }).join('');
 
         document.getElementById('loading-discrepancies').style.display = 'none';
         document.getElementById('discrepancies-table').style.display = 'table';
@@ -762,9 +773,37 @@ async function submitResolveDiscrepancy() {
 }
 
 // ==== CALENDAR LOGIC ====
-const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const CAL_MIN_YEAR = 2025;
 const CAL_MAX_YEAR = 2027;
+
+const ORG_COLORS = [
+    '#3b82f6', // Blue
+    '#ef4444', // Red
+    '#10b981', // Emerald green
+    '#f59e0b', // Amber
+    '#8b5cf6', // Purple
+    '#ec4899', // Pink
+    '#14b8a6', // Teal
+    '#f97316', // Orange
+    '#6366f1', // Indigo
+    '#84cc16', // Lime
+    '#d946ef', // Fuchsia
+    '#06b6d4'  // Cyan
+];
+const assignedOrgColors = new Map();
+
+function getOrgColor(orgName) {
+    if (!orgName) return '#1b1464';
+    if (assignedOrgColors.has(orgName)) {
+        return assignedOrgColors.get(orgName);
+    }
+    // Assign the next available color from the palette
+    const colorIndex = assignedOrgColors.size % ORG_COLORS.length;
+    const color = ORG_COLORS[colorIndex];
+    assignedOrgColors.set(orgName, color);
+    return color;
+}
 
 let calendarMonth = new Date().getMonth();
 let calendarYear = new Date().getFullYear();
@@ -816,6 +855,11 @@ function renderCalendar(reservations) {
 
     // Collect unique orgs for legend
     const legendOrgs = new Map();
+    safeReservations.forEach(res => {
+        if (res.organization_name) {
+            legendOrgs.set(res.organization_name, getOrgColor(res.organization_name));
+        }
+    });
 
     // Optimize: Pre-parse reservation dates outside the loop
     const parsedReservations = safeReservations.map(res => ({
@@ -848,40 +892,27 @@ function renderCalendar(reservations) {
         if (dayReservations.length > 0) {
             dayDiv.classList.add('has-reservation');
 
-            // Add icon tags (max 3 visible)
-            const iconsDiv = document.createElement('div');
-            iconsDiv.className = 'day-icons';
+            // Add color bars (max 3 visible)
+            const barsDiv = document.createElement('div');
+            barsDiv.className = 'day-bars';
 
-            const maxIcons = 3;
-            const visibleRes = dayReservations.slice(0, maxIcons);
+            const maxBars = 3;
+            const visibleRes = dayReservations.slice(0, maxBars);
             visibleRes.forEach(res => {
-                const iconSpan = document.createElement('span');
-                iconSpan.className = 'day-icon-tag';
-                iconSpan.textContent = res.organization_icon || '🏢';
-                iconsDiv.appendChild(iconSpan);
-
-                // Track for legend
-                legendOrgs.set(res.organization_name, res.organization_icon || '🏢');
+                const bar = document.createElement('div');
+                bar.className = 'day-bar';
+                bar.style.backgroundColor = getOrgColor(res.organization_name);
+                bar.textContent = res.organization_name;
+                barsDiv.appendChild(bar);
             });
 
-            if (dayReservations.length > maxIcons) {
-                const moreSpan = document.createElement('span');
+            if (dayReservations.length > maxBars) {
+                const moreSpan = document.createElement('div');
                 moreSpan.className = 'day-more-tag';
-                moreSpan.textContent = `+${dayReservations.length - maxIcons}`;
-                iconsDiv.appendChild(moreSpan);
+                moreSpan.textContent = `+${dayReservations.length - maxBars} more`;
+                barsDiv.appendChild(moreSpan);
             }
-            dayDiv.appendChild(iconsDiv);
-
-            // Status dots
-            const dotsDiv = document.createElement('div');
-            dotsDiv.className = 'status-dots';
-            const uniqueStatuses = [...new Set(dayReservations.map(r => r.status))];
-            uniqueStatuses.forEach(status => {
-                const dot = document.createElement('span');
-                dot.className = `status-dot ${status}`;
-                dotsDiv.appendChild(dot);
-            });
-            dayDiv.appendChild(dotsDiv);
+            dayDiv.appendChild(barsDiv);
 
             // Tooltip on hover
             dayDiv.addEventListener('mouseenter', (e) => {
@@ -964,10 +995,10 @@ function renderLegend(legendOrgs) {
     }
 
     legendContainer.innerHTML = '';
-    legendOrgs.forEach((icon, name) => {
+    legendOrgs.forEach((color, name) => {
         const item = document.createElement('div');
         item.className = 'legend-item';
-        item.innerHTML = `<span class="legend-icon">${icon}</span><span class="legend-name">${name}</span>`;
+        item.innerHTML = `<span class="legend-color-box" style="background-color: ${color}; width: 12px; height: 12px; border-radius: 3px; display: inline-block;"></span><span class="legend-name">${name}</span>`;
         legendContainer.appendChild(item);
     });
 }
@@ -975,15 +1006,13 @@ function renderLegend(legendOrgs) {
 // ==== EMOJI RANDOMIZER ====
 const EMOJI_CATEGORIES = [
     // Faces & People
-    '😀','😂','😎','🤓','🤠','👽','👻','🤖','👾',
+    '😀', '😂', '😎', '🤓', '🤠', '👽', '👻', '🤖', '👾',
     // Animals
-    '🐶','🐱','🦁','🐯','🐮','🐷','🐸','🐵','🐔','🐧','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷','🕸','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐕‍🦺','🐈','🐓','🦃','🦚','🦜','🦢','🦩','🕊','🐇','🦝','🦨','🦡','🦦','🦥','🐁','🐀','🐿','🦔',
+    '🐶', '🐱', '🦁', '🐯', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦟', '🦗', '🕷', '🕸', '🦂', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘', '🦛', '🦏', '🐪', '🐫', '🦒', '🦘', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🦙', '🐐', '🦌', '🐕', '🐩', '🦮', '🐕‍🦺', '🐈', '🐓', '🦃', '🦚', '🦜', '🦢', '🦩', '🕊', '🐇', '🦝', '🦨', '🦡', '🦦', '🦥', '🐁', '🐀', '🐿', '🦔',
     // Nature
-    '🌲','🌳','🌴','🌵','🌾','🌿','☘️','🍀','🍁','🍂','🍃','🍄','🌰','🌹','🥀','🌺','🌻','🌼','🌷',
+    '🌲', '🌳', '🌴', '🌵', '🌾', '🌿', '☘️', '🍀', '🍁', '🍂', '🍃', '🍄', '🌰', '🌹', '🥀', '🌺', '🌻', '🌼', '🌷',
     // Sports & Activities
-    '⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳','🪁','🏹','🎣','🤿','🥊','🥋','🎽','🛹','🛼','🛷','⛸','🥌','🎿','⛷','🏂','🪂','🏋️','🤼','🤸','⛹️','🤺','🤾','🏌️','🏇','🧘','🏄','🏊','🤽','🚣','🧗','🚵','🚴',
-    // Flags
-    '🇺🇸','🇬🇧','🇨🇦','🇦🇺','🇮🇳','🇳🇵','🇲🇽','🇧🇷','🇫🇷','🇩🇪','🇯🇵','🇰🇷','🇨🇳','🇿🇦','🇪🇸','🇮🇹'
+    '⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🪃', '🥅', '⛳', '🪁', '🏹', '🎣', '🤿', '🥊', '🥋', '🎽', '🛹', '🛼', '🛷', '⛸', '🥌', '🎿', '⛷', '🏂', '🪂', '🏋️', '🤼', '🤸', '⛹️', '🤺', '🤾', '🏌️', '🏇', '🧘', '🏄', '🏊', '🤽', '🚣', '🧗', '🚵', '🚴'
 ];
 
 // ==== DAILY MANIFEST MODAL ====
@@ -996,34 +1025,34 @@ function openManifestModal(date, reservations) {
     body.innerHTML = reservations.length === 0
         ? '<p style="color: #64748b;">No reservations for this day.</p>'
         : reservations.map(res => {
-        let badgeColor = '#1b1464';
-        if (res.status === 'completed') badgeColor = '#10b981';
-        if (res.status === 'pending') badgeColor = '#e3000f';
+            let badgeColor = '#1b1464';
+            if (res.status === 'completed') badgeColor = '#10b981';
+            if (res.status === 'pending') badgeColor = '#e3000f';
 
-        const startTime = new Date(res.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        const endTime = new Date(res.end_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const startTime = new Date(res.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const endTime = new Date(res.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-        return `
-            <div class="manifest-card">
-                <div class="manifest-header">
+            return `
+            <div class="manifest-card" style="border-left: 4px solid ${getOrgColor(res.organization_name)};">
+                <div class="manifest-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
                     <div class="manifest-org">
-                        <span style="font-size: 1.5rem;">🏢</span>
-                        <div>
-                            <div>${res.organization_name}</div>
-                            <div style="font-size: 0.75rem; color: #64748b; font-weight: 400;">Location: ${res.location_name || 'N/A'} • ${startTime} - ${endTime}</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #1e293b;">${res.organization_name}</div>
+                        <div style="font-size: 0.85rem; color: #64748b; margin-top: 4px;">
+                            <span style="font-weight: 500;">📍 ${res.location_name || 'N/A'}</span> • 
+                            <span>⏰ ${startTime} - ${endTime}</span>
                         </div>
                     </div>
-                    <span class="manifest-status" style="background: ${badgeColor}22; color: ${badgeColor}; border: 1px solid ${badgeColor};">
+                    <span class="manifest-status" style="background: ${badgeColor}22; color: ${badgeColor}; border: 1px solid ${badgeColor}; border-radius: 9999px; padding: 4px 10px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
                         ${res.status}
                     </span>
                 </div>
-                <div class="manifest-items">
-                    <strong>Reserved Equipment:</strong><br>
+                <div class="manifest-items" style="padding-top: 1rem; border-top: 1px solid #e2e8f0; font-size: 0.9rem; color: #334155; line-height: 1.5;">
+                    <div style="color: #0f172a; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">Reserved Equipment</div>
                     ${res.item_names || 'No items listed'}
                 </div>
             </div>
         `;
-    }).join('');
+        }).join('');
 
     openModal('manifest-modal');
 }
@@ -1099,6 +1128,129 @@ function initApp() {
             const emojis = ['🏢', '🎓', '🏫', '📚', '⚽', '🎭', '🎨', '🔬', '💼', '🌍'];
             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
             document.getElementById('org-icon').value = randomEmoji;
+        });
+    }
+
+    document.getElementById('new-item-btn').addEventListener('click', () => {
+        // Populate location dropdown from already-fetched data
+        fetch('/locations').then(r => r.json()).then(data => {
+            const select = document.getElementById('item-location');
+            select.innerHTML = '<option value="">Select Location</option>'
+                + data.data.map(l => `
+                <option value="${l.location_id}">${l.name}</option>
+            `).join('');
+        });
+        document.getElementById('new-item-form').style.display = 'block';
+    });
+
+    document.getElementById('upload-trigger-btn').addEventListener('click', () => {
+        document.getElementById('item-image-file').click();
+    });
+
+    document.getElementById('item-image-file').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const status = document.getElementById('upload-status');
+        status.textContent = 'Uploading...';
+        status.style.color = '#60a5fa';
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', 'frontend_upload');
+
+        try {
+            const response = await fetch(
+                'https://api.cloudinary.com/v1_1/dptqomarh/image/upload',
+                {
+                    method: 'POST',
+                    body: formData
+                }
+            );
+
+            const data = await response.json();
+
+            if (data.secure_url) {
+                document.getElementById('item-image-url').value = data.secure_url;
+                document.getElementById('preview-img').src = data.secure_url;
+                document.getElementById('upload-preview').style.display = 'block';
+
+                status.textContent = 'Photo uploaded';
+                status.style.color = '#10b981';
+            } else {
+                status.textContent = 'Upload failed';
+                status.style.color = '#f44453';
+            }
+        } catch (err) {
+            status.textContent = 'Upload failed';
+            status.style.color = '#f44453';
+        }
+    });
+
+    const removeBtn = document.getElementById('remove-item-btn');
+    if (removeBtn) {
+        removeBtn.addEventListener('click', async () => {
+            const select = document.getElementById('remove-item-select');
+            select.innerHTML = '<option value="">Loading items...</option>';
+            document.getElementById('remove-item-form').style.display = 'block';
+
+            try {
+                const itemsApi = await fetchApi('/items');
+                if (itemsApi.ok) {
+                    select.innerHTML = '<option value="">Choose an item...</option>'
+                        + itemsApi.data.map(item => `
+                            <option value="${item.item_id}">${escapeHtml(item.name)} (${escapeHtml(item.category || 'Uncategorized')}) - ${escapeHtml(item.status)}</option>
+                        `).join('');
+                } else {
+                    select.innerHTML = '<option value="">Failed to load items</option>';
+                    showToast('Failed to load items for deletion', 'error');
+                }
+            } catch (err) {
+                select.innerHTML = '<option value="">Error loading items</option>';
+            }
+        });
+    }
+
+    const cancelDeleteBtn = document.getElementById('cancel-delete');
+    if (cancelDeleteBtn) {
+        cancelDeleteBtn.addEventListener('click', () => {
+            document.getElementById('remove-item-form').style.display = 'none';
+            document.getElementById('remove-item-select').value = '';
+        });
+    }
+
+    const confirmDeleteBtn = document.getElementById('confirm-delete');
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', async () => {
+            const select = document.getElementById('remove-item-select');
+            const itemId = select.value;
+
+            if (!itemId) {
+                showToast('Please select an item to remove', 'error');
+                return;
+            }
+
+            const itemName = select.options[select.selectedIndex].text;
+            const confirmChoice = confirm(`Are you sure you want to permanently remove "${itemName}"?`);
+            if (!confirmChoice) return;
+
+            try {
+                const response = await fetch(`/items/${itemId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    showToast('Item deleted successfully!', 'success');
+                    document.getElementById('remove-item-form').style.display = 'none';
+                    select.value = '';
+                    loadInventory();
+                } else {
+                    showToast(data.error || 'Failed to delete item', 'error');
+                }
+            } catch (err) {
+                showToast('Error deleting item', 'error');
+            }
         });
     }
 

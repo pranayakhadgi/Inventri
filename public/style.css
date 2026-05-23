@@ -345,7 +345,7 @@ tr:last-child td {
     border-radius: 8px;
     padding: 1rem;
     margin-bottom: 1rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 .return-item-name {
@@ -388,7 +388,7 @@ tr:last-child td {
     cursor: pointer;
     transition: all 0.2s;
     font-family: inherit;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .btn:active {
@@ -402,7 +402,7 @@ tr:last-child td {
 
 .btn-primary:hover {
     background: #2a228c;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
 }
 
 .btn-secondary {
@@ -665,29 +665,34 @@ tr:last-child td {
     font-weight: 700;
 }
 
-/* Icon tags inside day cells */
-.day-icons {
+/* Color bars inside day cells */
+.day-bars {
     display: flex;
-    gap: 1px;
-    flex-wrap: wrap;
-    justify-content: center;
-    font-size: 0.65rem;
-    line-height: 1;
-    max-width: 100%;
-    overflow: hidden;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    padding: 0 4px;
+    margin-top: 2px;
 }
 
-.day-icon-tag {
-    font-size: 0.7rem;
+.day-bar {
+    font-size: 0.65rem;
     line-height: 1;
-    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
-    cursor: pointer;
+    color: white;
+    padding: 2px 4px;
+    border-radius: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
 }
 
 .day-more-tag {
-    font-size: 0.55rem;
+    font-size: 0.65rem;
     color: #64748b;
     font-weight: 600;
+    text-align: center;
+    margin-top: 1px;
 }
 
 /* Reservation indicator dot */
@@ -716,9 +721,17 @@ tr:last-child td {
     border-radius: 50%;
 }
 
-.status-dot.active { background: #60a5fa; }
-.status-dot.completed { background: #10b981; }
-.status-dot.pending { background: #f59e0b; }
+.status-dot.active {
+    background: #60a5fa;
+}
+
+.status-dot.completed {
+    background: #10b981;
+}
+
+.status-dot.pending {
+    background: #f59e0b;
+}
 
 .calendar-tooltip {
     display: none;
@@ -1011,7 +1024,7 @@ tr:last-child td {
     border: 1px solid #e2e8f0;
     border-radius: 14px;
     padding: 0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     display: flex;
     flex-direction: column;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
@@ -1115,4 +1128,21 @@ tr:last-child td {
 
 .info-value {
     color: #1e293b;
-}
+}
+
+.upload-zone {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.upload-zone:hover {
+    background: #ffffff;
+    border-color: #1b1464;
+    box-shadow: 0 0 0 3px rgba(27, 20, 100, 0.1);
+}
