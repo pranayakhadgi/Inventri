@@ -14,7 +14,7 @@ app.use(express.json()); // Restored missing JSON middleware
 
 //transition to the serverless-ready routing
 //app.use(express.static('public')); <-- old
-const staticPath = process.env.VERCEL ? path.join(__dirname, '../public') : path.join(__dirname, '../public');
+const staticPath = process.env.VERCEL ? path.join(__dirname, '../client/dist') : path.join(__dirname, '../client/dist');
 app.use(express.static(staticPath));
 
 
@@ -68,7 +68,7 @@ app.use('/api-docs', swagger.serve, swagger.setup);
 
 
 // serves index.html for any non-API routes (SPA support)
-app.get('/', (req, res) => {
+app.get('*', (req, res) => {
     res.sendFile(path.join(staticPath, 'index.html'));
 });
 /**
