@@ -20,20 +20,20 @@ app.use(express.static(staticPath));
 
 // ROUTES
 const organizationsRouter = require('./routes/organizations');
-app.use('/organizations', organizationsRouter);
 const itemsRouter = require('./routes/items');
-app.use('/items', itemsRouter);
-const PORT = process.env.PORT || 3000;
 const reservationsRouter = require('./routes/reservations');
-app.use('/reservations', reservationsRouter);
 const discrepanciesRouter = require('./routes/discrepancies');
-app.use('/discrepancies', discrepanciesRouter)
 const reportsRouter = require('./routes/reports');
-app.use('/reports', reportsRouter)
 const locationsRouter = require('./routes/locations');
-app.use('/locations', locationsRouter)
 
-app.get('/health', async (req, res) => {
+app.use('/api/organizations', organizationsRouter);
+app.use('/api/items', itemsRouter);
+app.use('/api/reservations', reservationsRouter);
+app.use('/api/discrepancies', discrepanciesRouter);
+app.use('/api/reports', reportsRouter);
+app.use('/api/locations', locationsRouter);
+
+app.get('/api/health', async (req, res) => {
     try {
         const dbResult = await
             db.query('SELECT NOW() as time');
@@ -76,6 +76,7 @@ app.get('/', (req, res) => {
  * contradicts the earlier mere declaration of app.listen() function
  * 
  */
+const PORT = process.env.PORT || 3000;
 if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, () => {
         console.log(`local server running on this thang http://localhost:${PORT}`);
