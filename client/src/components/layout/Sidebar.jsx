@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
 import clsx from 'clsx';
+import { useTheme } from '../../hooks/useTheme';
 
 const navItems = [
   {
@@ -40,53 +40,50 @@ const navItems = [
   },
 ];
 
+const SunIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+  </svg>
+);
+
+const MoonIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+  </svg>
+);
+
 export function Sidebar({ collapsed, onToggle }) {
   const location = useLocation();
-  const [isDark, setIsDark] = useState(() =>
-    document.documentElement.classList.contains('dark')
-  );
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDark);
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  }, [isDark]);
-
-  // Init theme from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved === 'dark') setIsDark(true);
-    else if (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setIsDark(true);
-    }
-  }, []);
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <aside
       className={clsx(
         'fixed top-0 left-0 h-screen z-40',
-        'bg-[var(--surface-0)] border-r border-[var(--surface-border)]',
+        'bg-sidebar border-r border-sidebar-border',
         'flex flex-col',
-        'transition-all duration-[var(--duration-slow)] ease-[var(--ease-out)]',
+        'transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
         collapsed ? 'w-[var(--sidebar-collapsed)]' : 'w-[var(--sidebar-width)]'
       )}
     >
       {/* Logo */}
-      <div className="flex items-center h-[var(--header-height)] px-4 border-b border-[var(--surface-border)]">
+      <div className="flex items-center h-[var(--header-height)] px-4 border-b border-sidebar-border">
         <button
           onClick={onToggle}
-          className="flex items-center gap-3 w-full rounded-[var(--radius-md)] p-2 hover:bg-[var(--surface-2)] transition-colors cursor-pointer"
+          className="flex items-center gap-3 w-full rounded-lg p-2 hover:bg-accent transition-colors cursor-pointer"
           aria-label="Toggle sidebar"
         >
-          <div className="w-9 h-9 rounded-[var(--radius-md)] bg-gradient-to-br from-[var(--color-primary-500)] to-[var(--color-primary-700)] flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-[var(--shadow-md)]">
-            W
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-indigo-700 flex items-center justify-center text-primary-foreground font-bold text-sm shrink-0 shadow-md">
+            I
           </div>
           {!collapsed && (
-            <div className="overflow-hidden">
-              <span className="font-bold text-base tracking-tight text-[var(--text-primary)]">
-                WiaB
+            <div className="overflow-hidden min-w-0">
+              <span className="font-bold text-base tracking-tight text-sidebar-foreground break-words whitespace-normal">
+                Inventri
               </span>
-              <span className="block text-[10px] text-[var(--text-muted)] leading-none -mt-0.5">
-                Equipment Inventory
+              <span className="block text-[10px] text-muted-foreground leading-tight mt-0.5 break-words whitespace-normal max-w-[160px]">
+                Asset management platform for university orgs
               </span>
             </div>
           )}
@@ -105,54 +102,39 @@ export function Sidebar({ collapsed, onToggle }) {
               key={item.path}
               to={item.path}
               className={clsx(
-                'flex items-center gap-3 px-3 py-2.5 rounded-[var(--radius-md)]',
-                'text-sm font-medium transition-all duration-[var(--duration-fast)]',
-                'group relative',
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg',
+                'text-sm font-medium transition-all duration-150',
+                'group relative min-w-0',
                 isActive
-                  ? 'bg-[var(--color-primary-50)] text-[var(--color-primary-700)] dark:bg-[var(--color-primary-900)]/30 dark:text-[var(--color-primary-300)]'
-                  : 'text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]'
+                  ? 'bg-sidebar-active text-sidebar-active-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
               )}
             >
-              {/* Active indicator bar */}
               {isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-[var(--color-primary-600)]" />
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-primary" />
               )}
-              <span className={clsx(
-                'shrink-0 transition-colors',
-                isActive ? 'text-[var(--color-primary-600)] dark:text-[var(--color-primary-400)]' : ''
-              )}>
-                {item.icon}
-              </span>
-              {!collapsed && <span>{item.label}</span>}
+              <span className="shrink-0">{item.icon}</span>
+              {!collapsed && <span className="break-words whitespace-normal">{item.label}</span>}
             </NavLink>
           );
         })}
       </nav>
 
       {/* Footer — Dark mode toggle */}
-      <div className="p-3 border-t border-[var(--surface-border)]">
+      <div className="p-3 border-t border-sidebar-border">
         <button
-          onClick={() => setIsDark((d) => !d)}
+          onClick={toggleTheme}
           className={clsx(
-            'flex items-center gap-3 w-full px-3 py-2.5 rounded-[var(--radius-md)]',
-            'text-sm font-medium text-[var(--text-secondary)]',
-            'hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]',
-            'transition-all duration-[var(--duration-fast)] cursor-pointer'
+            'flex items-center gap-3 w-full px-3 py-2.5 rounded-lg',
+            'text-sm font-medium text-muted-foreground',
+            'hover:bg-accent hover:text-foreground',
+            'transition-all duration-150 cursor-pointer'
           )}
         >
           <span className="shrink-0">
-            {isDark ? (
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="10" cy="10" r="4" />
-                <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.93 4.93l1.41 1.41M13.66 13.66l1.41 1.41M4.93 15.07l1.41-1.41M13.66 6.34l1.41-1.41" />
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-              </svg>
-            )}
+            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
           </span>
-          {!collapsed && <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>}
+          {!collapsed && <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>}
         </button>
       </div>
     </aside>

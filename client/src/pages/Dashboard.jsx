@@ -11,9 +11,9 @@ export default function Dashboard() {
 
   if (isError) {
     return (
-      <div className="p-8 text-center bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-        <h2 className="text-red-700 dark:text-red-400 font-bold mb-2">Failed to load dashboard</h2>
-        <p className="text-red-600 dark:text-red-300">Could not connect to the API. Please try again later.</p>
+      <div className="p-8 text-center bg-destructive/10 rounded-lg border border-destructive/30">
+        <h2 className="text-destructive font-bold mb-2">Failed to load dashboard</h2>
+        <p className="text-destructive/80">Could not connect to the API. Please try again later.</p>
       </div>
     );
   }
@@ -22,28 +22,32 @@ export default function Dashboard() {
     <div className="space-y-8">
       {/* Quick Actions Header */}
       <div className="flex sm:flex-row flex-col items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-[var(--text-primary)]">Welcome Back</h2>
-          <p className="text-[var(--text-secondary)]">Here's what's happening with your inventory today.</p>
+        <div className="min-w-0">
+          <h2 className="text-2xl font-bold text-foreground break-words whitespace-normal">
+            Welcome Back
+          </h2>
+          <p className="text-muted-foreground max-w-2xl leading-relaxed break-words whitespace-normal">
+            Here's what's happening with your inventory today.
+          </p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="secondary" asChild>
+        <div className="flex items-center gap-3 shrink-0">
+          <Button variant="outline">
             <Link to="/inventory">Manage Items</Link>
           </Button>
-          <Button variant="primary" asChild>
+          <Button variant="primary">
             <Link to="/reservations/new">+ New Reservation</Link>
           </Button>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {isLoading ? (
           <>
-            <SkeletonCard delay={0} />
-            <SkeletonCard delay={100} />
-            <SkeletonCard delay={200} />
-            <SkeletonCard delay={300} />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
           </>
         ) : (
           <>
@@ -86,7 +90,7 @@ export default function Dashboard() {
             <StatCard
               label="Flagged Discrepancies"
               value={stats.flaggedDiscrepancies}
-              color={stats.flaggedDiscrepancies > 0 ? "red" : "amber"}
+              color={stats.flaggedDiscrepancies > 0 ? 'red' : 'amber'}
               delay={300}
               icon={
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -102,9 +106,9 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Reservations */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <h3 className="font-semibold text-lg">Recent Reservations</h3>
-            <Link to="/reservations" className="text-sm text-[var(--color-primary-600)] hover:underline">
+          <CardHeader className="flex flex-row items-center justify-between gap-3">
+            <h3 className="font-semibold text-lg text-card-foreground break-words whitespace-normal min-w-0">Recent Reservations</h3>
+            <Link to="/reservations" className="text-sm text-primary hover:underline shrink-0">
               View all
             </Link>
           </CardHeader>
@@ -112,12 +116,12 @@ export default function Dashboard() {
             {isLoading ? (
               <SkeletonTable rows={5} cols={3} className="border-0" />
             ) : stats.recentReservations?.length > 0 ? (
-              <div className="divide-y divide-[var(--surface-border)]">
+              <div className="divide-y divide-border">
                 {stats.recentReservations.map((res) => (
-                  <div key={res.reservation_id} className="flex items-center justify-between p-4 hover:bg-[var(--surface-1)] transition-colors">
-                    <div>
-                      <p className="font-medium text-[var(--text-primary)]">{res.organization_name}</p>
-                      <p className="text-sm text-[var(--text-secondary)]">
+                  <div key={res.reservation_id} className="flex items-center justify-between gap-3 p-4 hover:bg-muted/50 transition-colors min-w-0">
+                    <div className="min-w-0">
+                      <p className="font-medium text-card-foreground break-words">{res.organization_name}</p>
+                      <p className="text-sm text-muted-foreground">
                         {new Date(res.start_time).toLocaleDateString()}
                       </p>
                     </div>
@@ -126,7 +130,7 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center text-[var(--text-muted)]">
+              <div className="p-8 text-center text-muted-foreground">
                 No recent reservations
               </div>
             )}
@@ -135,26 +139,26 @@ export default function Dashboard() {
 
         {/* Action Items / Discrepancies */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <h3 className="font-semibold text-lg">Action Items</h3>
+          <CardHeader className="flex flex-row items-center justify-between gap-3">
+            <h3 className="font-semibold text-lg text-card-foreground break-words whitespace-normal min-w-0">Action Items</h3>
           </CardHeader>
           <CardContent className="p-0">
             {isLoading ? (
               <SkeletonTable rows={5} cols={3} className="border-0" />
             ) : stats.recentDiscrepancies?.filter(d => d.status === 'flagged')?.length > 0 ? (
-              <div className="divide-y divide-[var(--surface-border)]">
+              <div className="divide-y divide-border">
                 {stats.recentDiscrepancies.filter(d => d.status === 'flagged').map((disc) => (
-                  <div key={disc.discrepancy_id} className="flex items-center justify-between p-4 hover:bg-[var(--surface-1)] transition-colors">
-                    <div>
-                      <p className="font-medium text-[var(--text-primary)]">{disc.item_name}</p>
-                      <p className="text-sm text-[var(--text-secondary)]">{disc.type}</p>
+                  <div key={disc.discrepancy_id} className="flex items-center justify-between gap-3 p-4 hover:bg-muted/50 transition-colors min-w-0">
+                    <div className="min-w-0">
+                      <p className="font-medium text-card-foreground break-words">{disc.item_name}</p>
+                      <p className="text-sm text-muted-foreground">{disc.type}</p>
                     </div>
                     <Badge status="flagged" />
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center text-[var(--text-muted)]">
+              <div className="p-8 text-center text-muted-foreground">
                 <p>All caught up!</p>
                 <p className="text-sm mt-1">No flagged discrepancies to review.</p>
               </div>

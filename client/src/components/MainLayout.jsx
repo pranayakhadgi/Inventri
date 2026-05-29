@@ -9,13 +9,14 @@ export function MainLayout() {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[var(--surface-1)]">
+    <div className="min-h-screen bg-background">
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
       <Header collapsed={collapsed} />
 
       <main
         className={clsx(
-          'p-6 transition-all duration-[var(--duration-slow)] ease-[var(--ease-out)]',
+          'flex-1 p-6 lg:p-8 overflow-x-hidden',
+          'transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
           collapsed ? 'ml-[var(--sidebar-collapsed)]' : 'ml-[var(--sidebar-width)]'
         )}
       >

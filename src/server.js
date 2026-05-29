@@ -68,7 +68,7 @@ app.use('/api-docs', swagger.serve, swagger.setup);
 
 
 // serves index.html for any non-API routes (SPA support)
-app.get('*', (req, res) => {
+app.use((req, res) => {
     res.sendFile(path.join(staticPath, 'index.html'));
 });
 /**

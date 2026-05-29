@@ -12,23 +12,16 @@ export function ItemSheet({ item, open, onClose }) {
   useEffect(() => {
     const dialog = sheetRef.current;
     if (!dialog) return;
-
-    if (open) {
-      dialog.showModal();
-    } else {
-      dialog.close();
-    }
+    if (open) dialog.showModal();
+    else dialog.close();
   }, [open]);
 
   function handleBackdropClick(e) {
-    if (e.target === sheetRef.current) {
-      onClose?.();
-    }
+    if (e.target === sheetRef.current) onClose?.();
   }
 
   const handleDelete = async () => {
     if (!window.confirm(`Are you sure you want to delete ${item.name}?`)) return;
-
     try {
       await deleteItem.mutateAsync(item.item_id);
       toast.success('Item deleted successfully');
@@ -47,66 +40,49 @@ export function ItemSheet({ item, open, onClose }) {
       onClick={handleBackdropClick}
       className={clsx(
         'backdrop:bg-black/40 backdrop:backdrop-blur-sm',
-        'bg-[var(--surface-0)] text-[var(--text-primary)]',
+        'bg-card text-card-foreground',
         'fixed inset-y-0 right-0 m-0 h-full max-h-none w-full max-w-md',
-        'border-l border-[var(--surface-border)] shadow-[-10px_0_30px_rgba(0,0,0,0.1)]',
-        'slide-in-right p-0',
-        'open:animate-in open:slide-in-from-right-full duration-300'
+        'border-l border-border shadow-xl',
+        'p-0 animate-in'
       )}
     >
       <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--surface-border)]">
-          <h2 className="text-lg font-semibold truncate pr-4">{item.name}</h2>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-[var(--radius-sm)] hover:bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer shrink-0"
-          >
-            ✕
-          </button>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border gap-3">
+          <h2 className="text-lg font-semibold truncate min-w-0">{item.name}</h2>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0">✕</button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
-          {/* Image placeholder */}
-          <div className="aspect-video w-full rounded-[var(--radius-md)] bg-[var(--surface-2)] flex items-center justify-center border border-[var(--surface-border)]">
+          <div className="aspect-video w-full rounded-lg bg-muted flex items-center justify-center border border-border">
             {item.image_url ? (
-              <img src={item.image_url} alt={item.name} className="w-full h-full object-cover rounded-[var(--radius-md)]" />
+              <img src={item.image_url} alt={item.name} className="w-full h-full object-cover rounded-lg" />
             ) : (
-              <span className="text-[var(--text-muted)]">No Image</span>
+              <span className="text-muted-foreground">No Image</span>
             )}
           </div>
 
           <div className="space-y-4">
-            <h3 className="font-semibold text-[var(--text-primary)] border-b border-[var(--surface-border)] pb-2">
-              Details
-            </h3>
-            
+            <h3 className="font-semibold text-card-foreground border-b border-border pb-2">Details</h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-[var(--text-secondary)] mb-1">Status</p>
+                <p className="text-muted-foreground mb-1">Status</p>
                 <Badge status={item.status} />
               </div>
               <div>
-                <p className="text-[var(--text-secondary)] mb-1">Category</p>
-                <p className="font-medium capitalize">{item.category || '—'}</p>
+                <p className="text-muted-foreground mb-1">Category</p>
+                <p className="font-medium capitalize break-words">{item.category || '—'}</p>
               </div>
               <div className="col-span-2">
-                <p className="text-[var(--text-secondary)] mb-1">Location</p>
-                <p className="font-medium">{item.location_name || '—'}</p>
-                {item.location_type && (
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5 capitalize">{item.location_type}</p>
-                )}
+                <p className="text-muted-foreground mb-1">Location</p>
+                <p className="font-medium break-words">{item.location_name || '—'}</p>
+                {item.location_type && <p className="text-xs text-muted-foreground mt-0.5 capitalize">{item.location_type}</p>}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-6 border-t border-[var(--surface-border)] bg-[var(--surface-1)] flex gap-3">
-          <Button variant="secondary" className="flex-1" onClick={() => toast.info('Edit mode coming soon')}>
-            Edit Item
-          </Button>
+        <div className="p-6 border-t border-border bg-muted/50 flex gap-3">
+          <Button variant="secondary" className="flex-1" onClick={() => toast.info('Edit mode coming soon')}>Edit Item</Button>
           <Button variant="destructive" className="flex-1" onClick={handleDelete} disabled={deleteItem.isPending}>
             {deleteItem.isPending ? 'Deleting...' : 'Delete'}
           </Button>
