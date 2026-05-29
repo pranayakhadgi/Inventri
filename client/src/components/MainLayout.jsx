@@ -3,6 +3,7 @@ import { useState } from 'react';
 import clsx from 'clsx';
 import { Sidebar } from './layout/Sidebar';
 import { Header } from './layout/Header';
+import { ErrorBoundary } from './ErrorBoundary';
 
 export function MainLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -19,7 +20,9 @@ export function MainLayout() {
         )}
       >
         <div className="max-w-7xl mx-auto animate-in">
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </div>
       </main>
     </div>
