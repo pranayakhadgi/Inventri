@@ -40,6 +40,5 @@ export function mapPostgresError(err) {
                     message: process.env.NODE.ENV === 'production' ? 'Something went wrong' : error.message,
                 },
             };
-
     }
 }
