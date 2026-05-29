@@ -13,10 +13,14 @@ exports.up = async (pgm) => {
     //organizes all the item vectors into a multi-layered, interconnected graph
     //the cosine similarity in the opCLass helps AI to determine how closely
     //related two pieces (e.g. a jbl speaker and a soundcore speaker) are    
-    pgm.createIndex('items', 'embedding', {
+    pgm.createIndex('items', [
+        {
+            name: 'embedding',
+            opclass: { name: 'vector_cosine_ops' }
+        }
+    ], {
         name: 'items_embedding_idx',
-        method: 'hnsw',
-        opclass: 'vector_cosine_ops'
+        method: 'hnsw'
     });
 };
 
