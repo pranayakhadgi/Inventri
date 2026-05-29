@@ -1,24 +1,27 @@
-import { Outlet, NavLink } from 'react-router';
+import { Outlet } from 'react-router';
+import { useState } from 'react';
+import clsx from 'clsx';
+import { Sidebar } from './layout/Sidebar';
+import { Header } from './layout/Header';
 
 export function MainLayout() {
-    return (
-        <div className="min-h-screen bg-[#fdfbf7] text-[#1b1464] font-sans">
-            {/* Top Navigation */}
-            <header className="bg-[#1b1464] text-white p-4 shadow-md">
-                <div className="max-w-7xl mx-auto flex items-center justify-between">
-                    <h1 className="text-2xl font-bold tracking-wide">Inventory Management System</h1>
-                    <nav className="flex gap-6">
-                        <NavLink to="/" className="hover:text-[#e3000f] transition-colors">Dashboard</NavLink>
-                        <NavLink to="/inventory" className="hover:text-[#e3000f] transition-colors">Inventory</NavLink>
-                        <NavLink to="/reservations" className="hover:text-[#e3000f] transition-colors">Reservations</NavLink>
-                    </nav>
-                </div>
-            </header>
+  const [collapsed, setCollapsed] = useState(false);
 
-            {/* Page Content */}
-            <main className="max-w-7xl mx-auto p-6">
-                <Outlet />
-            </main>
+  return (
+    <div className="min-h-screen bg-[var(--surface-1)]">
+      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
+      <Header collapsed={collapsed} />
+
+      <main
+        className={clsx(
+          'p-6 transition-all duration-[var(--duration-slow)] ease-[var(--ease-out)]',
+          collapsed ? 'ml-[var(--sidebar-collapsed)]' : 'ml-[var(--sidebar-width)]'
+        )}
+      >
+        <div className="max-w-7xl mx-auto animate-in">
+          <Outlet />
         </div>
-    )
+      </main>
+    </div>
+  );
 }
