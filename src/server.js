@@ -5,7 +5,7 @@ const cors = require('cors');
 
 const app = express();
 
-// === CORS MUST BE FIRST — before any routes or body parsing ===
+// === CORS FIRST — before routes, before body parsing ===
 const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:3000',
@@ -19,9 +19,6 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
-
-// === Handle preflight OPTIONS requests explicitly ===
-app.options('*', cors());
 
 // === Body parsing AFTER CORS ===
 app.use(express.json());
@@ -45,7 +42,6 @@ app.get('/api/health', (req, res) => {
     res.json({
         status: 'healthy',
         service: 'inventri-api',
-        cors: 'enabled',
         timestamp: new Date().toISOString()
     });
 });
@@ -53,7 +49,6 @@ app.get('/api/health', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Inventri API running on port ${PORT}`);
-    console.log('CORS origins:', allowedOrigins);
 });
 
-module.exports = app;// CORS fix deployed Sat May 30 13:25:31 CDT 2026
+module.exports = app;
