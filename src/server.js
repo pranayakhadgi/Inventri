@@ -5,25 +5,18 @@ const cors = require('cors');
 
 const app = express();
 
-// === CORS FIRST — before routes, before body parsing ===
-const allowedOrigins = [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://club-equipment-tracker.vercel.app',
-    'https://inventri.vercel.app'
-];
-
 app.use(cors({
-    origin: allowedOrigins,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+    origin: [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'https://club-equipment-tracker.vercel.app',
+        'https://inventri.vercel.app'
+    ],
+    credentials: true
 }));
 
-// === Body parsing AFTER CORS ===
 app.use(express.json());
 
-// === ROUTES ===
 const organizationsRouter = require('./routes/organizations');
 const itemsRouter = require('./routes/items');
 const reservationsRouter = require('./routes/reservations');
@@ -38,12 +31,14 @@ app.use('/api/discrepancies', discrepanciesRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/locations', locationsRouter);
 
-app.get('/api/health', (req, res) => {
-    res.json({
-        status: 'healthy',
-        service: 'inventri-api',
-        timestamp: new Date().toISOString()
-    });
+app.get('/api/health', async (req, res) => {
+    try {
+        const db = require('./config/database');
+        await db.query('SELECT NOW() as time');
+        res.json({ status: 'healthy', database: 'connected' });
+    } catch (err) {
+        res.status(503).json({ status: 'unhealthy', error: err.message });
+    }
 });
 
 const PORT = process.env.PORT || 3000;
