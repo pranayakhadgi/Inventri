@@ -4,6 +4,7 @@ const express = require('express');
 const path = require('path');
 const db = require('./config/database');
 const swagger = require('./config/swagger');
+const cors = require('cors');
 
 
 //THE HOLY BACKENDDD
@@ -17,6 +18,23 @@ app.use(express.json()); // Restored missing JSON middleware
 const staticPath = process.env.VERCEL ? path.join(__dirname, '../client/dist') : path.join(__dirname, '../client/dist');
 app.use(express.static(staticPath));
 
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://club-equipment-tracker.vercel.app/'
+]
+
+//CORS ROUTE
+app.use(cors({
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true
+}));
 
 // ROUTES
 const organizationsRouter = require('./routes/organizations');
@@ -77,10 +95,9 @@ app.use((req, res) => {
  * 
  */
 const PORT = process.env.PORT || 3000;
-if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, () => {
-        console.log(`local server running on this thang http://localhost:${PORT}`);
-    });
-}
+app.listen(PORT, () => {
+    console.log(`Inventri API running on this thang http://localhost:${PORT}`);
+});
+
 
 module.exports = app;

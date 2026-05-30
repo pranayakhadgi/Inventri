@@ -1,27 +1,33 @@
 {
-  "name": "equipment-inventory",
+  "name": "inventri-api",
   "version": "1.0.0",
-  "description": "I am just building a system to understand the supply chain tech in detail. A better way to do this was to think of a problem within my range (for example: campus equipment inventory to solve the reservation disruptancies). My purpose to build a few exception handliung)",
-  "main": "index.js",
+  "description": "Asset management platform for university orgs through semantic search, conflict-free reservations, and a natural language command interface.",
+  "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node src/server.js",
-    "vercel-build": "node-pg-migrate up && node seeds/seed.js"
+    "dev": "nodemon src/server.js",
+    "migrate": "node-pg-migrate up",
+    "seed": "node seeds/seed.js"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/pranayakhadgi/WiaB.git"
   },
-  "keywords": [],
+  "keywords": [
+    "inventory",
+    "asset-management",
+    "reservations",
+    "university"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/pranayakhadgi/WiaB/issues"
+  "engines": {
+    "node": ">=18.0.0"
   },
-  "homepage": "https://github.com/pranayakhadgi/WiaB#readme",
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "express-validator": "^7.3.2",
@@ -31,5 +37,8 @@
     "slonik": "^49.5.0",
     "swagger-ui-express": "^5.0.1",
     "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
   }
 }
