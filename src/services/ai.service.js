@@ -1,9 +1,10 @@
-import { LLMCommandSchema, SYSTEM_PROMPT } from '../schemas/llm-command.schema.js';
+const { LLMCommandSchema, SYSTEM_PROMPT } = require('../schemas/llm-command.schema.js');
 
 class AIService {
     constructor() {
         this.provider = process.env.LLM_PROVIDER || 'local';
         this.localUrl = process.env.LOCAL_LLM_URL || 'http://localhost:11434';
+        this.localModel = process.env.LOCAL_LLM_MODEL || 'llama3.1';
         this.groqKey = process.env.GROQ_API_KEY;
         this.groqModel = process.env.GROQ_MODEL || 'llama-3.1-70b-versatile';
     }
@@ -30,7 +31,6 @@ class AIService {
                 model: this.localModel,
                 messages: [
                     { role: 'system', content: SYSTEM_PROMPT },
-                    { role: 'system', content: SYSTEM_PROMPT },
                     { role: 'user', content: `Parse: "${userInput}"` }
                 ],
                 format: 'json',
@@ -43,7 +43,8 @@ class AIService {
         });
 
         if (!res.ok) {
-            throw new Error(`Local LLM error: ${res.status} ${res.statusText}`);
+            const errBody = await res.text();
+            throw new Error(`Local LLM error: ${res.status} ${res.statusText} — ${errBody}`);
         }
 
         const data = await res.json();
@@ -64,7 +65,7 @@ class AIService {
                         { role: 'system', content: SYSTEM_PROMPT },
                         { role: 'user', content: `Parse: "${userInput}"` }
                     ],
-                    reponse_format: { type: 'json_object' },
+                    response_format: { type: 'json_object' },
                     temperature: 0.1
                 })
             });
@@ -91,4 +92,4 @@ class AIService {
     }
 }
 
-export default new AIService();
+module.exports = new AIService();
