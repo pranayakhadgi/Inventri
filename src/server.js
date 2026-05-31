@@ -1,3 +1,5 @@
+const aiCommandRoutes = require('./routes/ai-command.routes.js');
+
 require('dotenv').config();
 
 const express = require('express');
@@ -16,6 +18,8 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+app.use(aiCommandRoutes);
 
 const organizationsRouter = require('./routes/organizations');
 const itemsRouter = require('./routes/items');
