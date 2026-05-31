@@ -1,5 +1,5 @@
-import { Router } from 'express';
-import aiService from '../services/ai.services.js';
+const { Router } = require('express');
+const aiService = require('../services/ai.service.js');
 
 const router = Router();
 
@@ -33,4 +33,4 @@ router.post('/api/ai/command', async (req, res) => {
     }
 });
 
-export default router;
+module.exports = router;
