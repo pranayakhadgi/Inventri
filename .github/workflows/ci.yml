@@ -56,5 +56,5 @@ jobs:
         
     - name: Test health endpoint
       run: |
-        curl -f http://localhost:3000/health || exit 1
-        curl -f http://localhost:3000/organizations || exit 1
+        curl -f http://localhost:3000/api/health || exit 1
+        curl -f http://localhost:3000/api/organizations || exit 1
