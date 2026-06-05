@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const aiService = require('../services/ai.service.js');
+const { resolveDate } = require('../utils/date-resolver.js');
 
 const router = Router();
 
@@ -15,12 +16,16 @@ router.post('/api/ai/command', async (req, res) => {
 
     try {
         const parsed = await aiService.parseCommand(command);
+        const resolvedDate = parsed.entities.dateReference ? resolveDate(parsed.entities.dateReference) : null;
 
         //we'll wire executeIntent in the next section.
         return res.json({
             success: true,
             intent: parsed.intent,
-            entities: parsed.entities,
+            entities: {
+                ...parsed.entities,
+                resolvedDate
+            },
             confidence: parsed.confidence,
             result: null //placeholder for DB execution result
         });
