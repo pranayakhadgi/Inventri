@@ -17,8 +17,7 @@ class AIService {
         const validated = LLMCommandSchema.parse(parsed);
 
         if (validated.confidence < 0.7) {
-            throw new Error(`Low confidence (${validated.confidence}). 
-                    Rephrase or be more specific,`);
+            throw new Error(`Low confidence (${validated.confidence}). Rephrase or be more specific.`);
         }
         return validated;
     }
