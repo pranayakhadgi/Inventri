@@ -5,3 +5,5 @@ test_query.sql
 .env
 *.env
 node_modules/
+test-*.mjs
+
