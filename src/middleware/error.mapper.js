@@ -37,7 +37,7 @@ export function mapPostgresError(err) {
                 status: 500,
                 body: {
                     error: 'INTERNAL_SERVER_ERROR',
-                    message: process.env.NODE.ENV === 'production' ? 'Something went wrong' : error.message,
+                    message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message,
                 },
             };
     }

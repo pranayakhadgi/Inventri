@@ -167,10 +167,7 @@ router.post('/:id/return', returnRules, validate, async (req, res) => {
 
                 // reconcile and resolve any ghost discrepancies
                 await db.query(
-                    //what's the notes line doing here?
-                    //i see that it adds onto notes if there is one, but what if there's no notes?
-                    //
-                    `UPDATE discrepancies SET status = 'resolved'
+                    `UPDATE discrepancies SET status = 'resolved',
                     notes = COALESCE(notes, '') || ' (Auto-resolved: late full return)'
                     WHERE reservation_item_id = $1 AND status = 'flagged'`,
                     [item.reservation_item_id]

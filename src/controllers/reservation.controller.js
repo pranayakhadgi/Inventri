@@ -26,7 +26,7 @@ export const createReservation = async (req, res) => {
                 VALUES (
                 ${itemId},
                 ${organization},
-                tstzrange($(startIso)::timestamptz, ${endIso}::timestamptz, '[)')
+                tstzrange(${startIso}::timestamptz, ${endIso}::timestamptz, '[)')
                 )
                 RETURNING
                     id,
@@ -63,7 +63,7 @@ export const createReservation = async (req, res) => {
                             organization,
                             lower(reserved_range) AS start_time,
                             upper(reserved_range) AS end_time
-                            FROM reservations WHERE item_id = $(itemId)
+                            FROM reservations WHERE item_id = ${itemId}
                             AND reserved_range && tstzrange(${startIso}::timestamptz, 
                             ${endIso}::timestamptz, '[)')
                             ORDER BY lower(reserved_range) ASC LIMIT 5
@@ -86,7 +86,7 @@ export const createReservation = async (req, res) => {
     }
 };
 
-export const checkAvailbility = async (req, res) => {
+export const checkAvailability = async (req, res) => {
     const itemId = parseInt(req.params.id, 10);
     const { start, end } = req.query;
     const startIso = Temporal.Instant.from(start).toString();
