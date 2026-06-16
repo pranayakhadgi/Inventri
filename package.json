@@ -1,7 +1,7 @@
 {
   "name": "inventri-api",
   "version": "1.0.0",
-  "description": "Asset management platform for university orgs through semantic search, conflict-free reservations, and a natural language command interface.",
+  "description": "Asset management platform for university orgs through semantic search, conflict-free reservations, and a natural language command interface. ",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

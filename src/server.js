@@ -35,6 +35,23 @@ app.use('/api/discrepancies', discrepanciesRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/locations', locationsRouter);
 
+app.get('/', (req, res) => {
+    res.json({
+        name: 'Inventri API',
+        version: '1.0.0',
+        description: 'Asset management platform for university orgs',
+        endpoints: {
+            health: '/api/health',
+            organizations: '/api/organizations',
+            items: '/api/items',
+            reservations: '/api/reservations',
+            discrepancies: '/api/discrepancies',
+            reports: '/api/reports',
+            locations: '/api/locations'
+        }
+    });
+});
+
 app.get('/api/health', async (req, res) => {
     try {
         const db = require('./config/database');
