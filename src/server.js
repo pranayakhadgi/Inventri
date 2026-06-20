@@ -62,6 +62,10 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
+app.get('/api/ping', (req, res) => {
+    res.json({ message: 'pong' });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Inventri API running on port ${PORT}`);
