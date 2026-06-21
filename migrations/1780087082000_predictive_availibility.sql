@@ -1,25 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
-CREATE TABLE IF NOT EXISTS reservations (
-    id SERIAL PRIMARY KEY,
-    item_id INTEGER NOT NULL REFERENCES items (item_id) ON DELETE CASCADE,
-    organization VARCHAR(255) NOT NULL,
-    reserved_range TSTZRANGE NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT no_overlapping_reservations EXCLUDE USING gist (
-        item_id
-        WITH
-            =,
-            reserved_range
-        WITH
-            &&
-    ),
-    CONSTRAINT valid_time_range CHECK (
-        lower(reserved_range) < upper(reserved_range)
-    )
-);
-
 CREATE OR REPLACE FUNCTION is_item_available(
     p_item_id INTEGER,
     p_start TIMESTAMPTZ,
@@ -28,9 +8,12 @@ CREATE OR REPLACE FUNCTION is_item_available(
 BEGIN
     RETURN NOT EXISTS(
         SELECT 1
-        FROM reservations
-        WHERE item_id = p_item_id
-         AND reserved_range && tstzrange(p_start, p_end, '[)')
+        FROM reservations r
+        JOIN reservation_items ri ON r.reservation_id = ri.reservation_id
+        WHERE ri.item_id = p_item_id
+         AND r.status IN ('pending', 'active')
+         AND r.start_time < p_end
+         AND r.end_time > p_start
     );
 END
 $$ LANGUAGE plpgsql STABLE;
@@ -42,7 +25,10 @@ SELECT
     NOT EXISTS (
         SELECT 1
         FROM reservations r 
-        WHERE r.item_id = i.id
-         AND r.reserved_range @> NOW()
+        JOIN reservation_items ri ON r.reservation_id = ri.reservation_id
+        WHERE ri.item_id = i.item_id
+         AND r.status IN ('pending', 'active')
+         AND r.start_time <= NOW()
+         AND r.end_time >= NOW()
     ) AS is_available_now
-FROM items i;
+FROM items i;
